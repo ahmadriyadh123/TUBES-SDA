@@ -20,8 +20,7 @@
 
 int main(void)
 {
-
-    InitWindow(1600, 1400, "Tower Defense with Spritesheet");
+    InitWindow(TILE_SIZE * TILE_SCALE * COLS , TILE_SIZE * TILE_SCALE * ROWS, "Tower Defense with Spritesheet");
     SetTargetFPS(60);
 
     InitResources();
