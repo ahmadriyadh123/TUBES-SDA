@@ -3,4 +3,5 @@
 *.layout
 *.exe
 *.o
+.vscode/
 Makefile.win
