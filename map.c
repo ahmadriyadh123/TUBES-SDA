@@ -32,6 +32,9 @@ int map[ROWS][COLS] = {
 Texture2D sheetTiles;
 Texture2D circle;
 Texture2D timerTex;
+Texture2D tree1Tex;
+Texture2D tree2Tex;
+Texture2D bushTex;
 
 const char *towerFiles[3] = {
     "assets/tower1.png",
@@ -48,13 +51,18 @@ bool waveTimerVisible = true;
 int timerMapRow = 0;
 int timerMapCol = 2;
 
+DecorationData DecorationsArray[MAX_DECORATIONS];
+int DecorationsCount = 0;
+
 void InitResources(void)
 {
 
     sheetTiles = LoadTexture("assets/tilesheet.png");
     circle = LoadTexture("assets/tanahkosong.png");
     timerTex = LoadTexture("assets/timer.png");
-
+    tree1Tex = LoadTexture("assets/tree1.png");
+    tree2Tex = LoadTexture("assets/tree2.png");
+    bushTex = LoadTexture("bush.png");
 
     for (int i = 0; i < 3; i++)
     {
@@ -68,12 +76,28 @@ void InitResources(void)
         towers[i].frameCounter = 0;
     }
     texturesLoaded = true;
+
+    AddDecoration(DECORATION_TREE1, 2, 0);
+    AddDecoration(DECORATION_TREE1, 7, 12);
+    AddDecoration(DECORATION_TREE1, 8, 3);
+    AddDecoration(DECORATION_TREE1, 9, 0);
+    AddDecoration(DECORATION_TREE1, 9, 7);
+    AddDecoration(DECORATION_TREE1, 4, 5);
+    AddDecoration(DECORATION_TREE2, 0, 6);
+    AddDecoration(DECORATION_TREE2, 2, 4);
+    AddDecoration(DECORATION_TREE2, 4, 0);
+    AddDecoration(DECORATION_TREE2, 3, 8);
+    AddDecoration(DECORATION_TREE2, 9, 13);
+    AddDecoration(DECORATION_BUSH, 0, 4);
 }
 void UnloadResources(void)
 {
     UnloadTexture(sheetTiles);
     UnloadTexture(timerTex);
-    UnloadTexture(timerTex);
+    UnloadTexture(tree1Tex);
+    UnloadTexture(tree2Tex);
+    UnloadTexture(bushTex);
+    
     if (texturesLoaded)
     {
         for (int i = 0; i < 3; i++)
@@ -113,6 +137,17 @@ Rectangle GetTileSourceRect(int index)
     return (Rectangle){x, y, tileWidth, tileHeight};
 }
 TowerNode *towerList = NULL;
+
+void AddDecoration(DecorationType type, int row, int col) {
+    if (DecorationsCount < MAX_DECORATIONS) {
+        DecorationsArray[DecorationsCount].type = type;
+        DecorationsArray[DecorationsCount].row = row;
+        DecorationsArray[DecorationsCount].col = col;
+        DecorationsCount++;
+    } else {
+        TraceLog(LOG_WARNING, "Max decorations reached. Cannot add more.");
+    }
+}
 
 void AddTowerToList(TowerType type, int row, int col)
 {
@@ -157,6 +192,7 @@ void DrawTowers()
         current = current->next;
     }
 }
+
 void DrawGameTimer(float globalScale, float offsetX, float offsetY, int timerRow, int timerCol)
 {
     float tileScreenSize = TILE_SIZE * globalScale;
@@ -190,6 +226,62 @@ void DrawGameTimer(float globalScale, float offsetX, float offsetY, int timerRow
         DrawTexturePro(timerTex, source, destination, origin, 0.0f, WHITE);
     }
 }
+
+void DrawDecorationElement(DecorationType type, int row, int col, float globalScale, float offsetX, float offsetY) {
+    Texture2D decorationTexture;
+    Rectangle sourceRect;
+    float decorationScale = DECORATION_DRAW_SCALE;
+    float decorationOffsetY = 0.0f; 
+
+    if (type == DECORATION_TREE1) {
+        decorationTexture = tree1Tex;
+        sourceRect = (Rectangle){ 0, 0, (float)decorationTexture.width, (float)decorationTexture.height };
+        decorationOffsetY = -10.0f * globalScale;
+        
+        float tileScreenSize = TILE_SIZE * globalScale;
+        float decorationWidth = sourceRect.width * decorationScale * globalScale;
+        float decorationHeight = sourceRect.height * decorationScale * globalScale;
+        float px = offsetX + col * tileScreenSize + (tileScreenSize - decorationWidth) / 2.0f;
+        float tileCenterY = offsetY + row * tileScreenSize + tileScreenSize / 2.0f;
+        float py = tileCenterY - decorationHeight + decorationOffsetY;
+
+        DrawTexturePro(decorationTexture, sourceRect, (Rectangle){ px, py, decorationWidth, decorationHeight }, (Vector2){ 0, 0 }, 0.0f, WHITE);
+
+    } else if (type == DECORATION_TREE2) { 
+        decorationTexture = tree2Tex;
+        sourceRect = (Rectangle){ 0, 0, (float)decorationTexture.width, (float)decorationTexture.height };
+        decorationOffsetY = -10.0f * globalScale;
+
+        float tileScreenSize = TILE_SIZE * globalScale;
+        float decorationWidth = sourceRect.width * decorationScale * globalScale;
+        float decorationHeight = sourceRect.height * decorationScale * globalScale;
+        float px = offsetX + col * tileScreenSize + (tileScreenSize - decorationWidth) / 2.0f;
+        float tileCenterY = offsetY + row * tileScreenSize + tileScreenSize / 2.0f;
+        float py = tileCenterY - decorationHeight + decorationOffsetY;
+        
+        DrawTexturePro(decorationTexture, sourceRect, (Rectangle){ px, py, decorationWidth, decorationHeight }, (Vector2){ 0, 0 }, 0.0f, WHITE);
+
+    } else if (type == DECORATION_BUSH) { 
+        decorationTexture = bushTex;
+        sourceRect = (Rectangle){ 0, 0, (float)decorationTexture.width, (float)decorationTexture.height };
+        decorationOffsetY = 0.0f * globalScale;
+
+        float tileScreenSize = TILE_SIZE * globalScale;
+        float decorationWidth = sourceRect.width * decorationScale * globalScale;
+        float decorationHeight = sourceRect.height * decorationScale * globalScale;
+        float px = offsetX + col * tileScreenSize + (tileScreenSize - decorationWidth) / 2.0f;
+        float tileCenterY = offsetY + row * tileScreenSize + tileScreenSize / 2.0f;
+        float py = tileCenterY - decorationHeight + decorationOffsetY;
+        
+        DrawTexturePro(decorationTexture, sourceRect, (Rectangle){ px, py, decorationWidth, decorationHeight }, (Vector2){ 0, 0 }, 0.0f, WHITE);
+    }
+}
+void DrawDecorations(float globalScale, float offsetX, float offsetY) {
+    for (int i = 0; i < DecorationsCount; i++) {
+        DrawDecorationElement(DecorationsArray[i].type, DecorationsArray[i].row, DecorationsArray[i].col, globalScale, offsetX, offsetY);
+    }
+}
+
 void handleInput()
 {
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))

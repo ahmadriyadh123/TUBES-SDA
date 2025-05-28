@@ -24,13 +24,21 @@
 #define COLS 15
 #define TILE_SIZE 32
 #define TILE_SCALE 3.0f
-#define TOWER_SCALE 1.5f
+#define TOWER_SCALE 2.0f
 #define NUM_FRAMES 6
 #define FRAME_SPEED 3
+#define DECORATION_DRAW_SCALE 0.5f
+#define MAX_DECORATIONS 20 
 
 extern int map[ROWS][COLS];
 extern Texture2D sheetTiles;
 extern Texture2D timerTex;
+
+typedef enum { 
+    DECORATION_TREE1, 
+    DECORATION_TREE2,
+    DECORATION_BUSH, 
+} DecorationType;
 
 typedef enum
 {
@@ -58,6 +66,18 @@ typedef struct TowerNode
 } TowerNode;
 extern TowerNode *towerList;
 
+typedef struct {
+    DecorationType type;
+    int row, col;
+} DecorationData;
+
+typedef struct Decoration {
+    DecorationType type;
+    int row, col;
+    void* associatedObject; 
+} Decoration;
+extern Decoration *decorationsListHead; 
+
 extern bool timerFastForwardActive;
 extern float waveTimerCurrentTime;
 extern float waveTimerDuration;
@@ -66,16 +86,21 @@ extern bool waveTimerVisible;
 // Timer Position on Map Grid
 extern int timerMapRow;
 extern int timerMapCol;
+extern DecorationData DecorationsArray[MAX_DECORATIONS];
+extern int DecorationsCount; 
 
 void InitResources(void);
 void UnloadResources(void);
 Rectangle GetTileSourceRect(int index);
 void DrawTileWithCircle(int tileIndex, int x, int y);
+void AddDecoration(DecorationType type, int row, int col);
 void AddTowerToList(TowerType type, int row, int col);
 void DrawMap(void);
 void DrawTowers(void);
 void DrawTower(TowerType type, int row, int col);
 void handleInput();
 void DrawGameTimer(float globalScale, float offsetX, float offsetY, int timerRow, int timerCol);
+void DrawDecorationElement(DecorationType type, int row, int col, float globalScale, float offsetX, float offsetY);
+void DrawDecorations(float globalScale, float offsetX, float offsetY);
 
 #endif
