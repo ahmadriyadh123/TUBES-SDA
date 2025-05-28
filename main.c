@@ -33,6 +33,7 @@ int main(void)
         ClearBackground(RAYWHITE);
         DrawMap();
         DrawTowers();
+        DrawGameTimer(TILE_SCALE, 0.0f, 0.0f, timerMapRow, timerMapCol);
 
         EndDrawing();
     }

@@ -18,6 +18,8 @@
 
 #include "raylib.h"
 
+#define TIMER_OVERALL_SIZE_FACTOR 1.0f
+#define TIMER_IMAGE_DISPLAY_FACTOR 1.5f
 #define ROWS 10
 #define COLS 15
 #define TILE_SIZE 32
@@ -28,8 +30,7 @@
 
 extern int map[ROWS][COLS];
 extern Texture2D sheetTiles;
-extern Texture2D texStart;
-extern Texture2D texEnd;
+extern Texture2D timerTex;
 
 typedef enum
 {
@@ -57,6 +58,15 @@ typedef struct TowerNode
 } TowerNode;
 extern TowerNode *towerList;
 
+extern bool timerFastForwardActive;
+extern float waveTimerCurrentTime;
+extern float waveTimerDuration;
+extern bool waveTimerVisible;
+
+// Timer Position on Map Grid
+extern int timerMapRow;
+extern int timerMapCol;
+
 void InitResources(void);
 void UnloadResources(void);
 Rectangle GetTileSourceRect(int index);
@@ -66,5 +76,6 @@ void DrawMap(void);
 void DrawTowers(void);
 void DrawTower(TowerType type, int row, int col);
 void handleInput();
+void DrawGameTimer(float globalScale, float offsetX, float offsetY, int timerRow, int timerCol);
 
 #endif

@@ -30,24 +30,31 @@ int map[ROWS][COLS] = {
     {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 };
 Texture2D sheetTiles;
-Texture2D texStart;
-Texture2D texEnd;
 Texture2D circle;
+Texture2D timerTex;
+
 const char *towerFiles[3] = {
     "assets/tower1.png",
     "assets/tower2.png",
     "assets/tower3.png"};
 TowerAnimData towers[3];
+
 static bool texturesLoaded = false;
+bool timerFastForwardActive = false;
+float waveTimerCurrentTime = 0.0f;
+float waveTimerDuration = 20.0f;
+bool waveTimerVisible = true;
+
+int timerMapRow = 0;
+int timerMapCol = 2;
 
 void InitResources(void)
 {
 
     sheetTiles = LoadTexture("assets/tilesheet.png");
-
-    texStart = LoadTexture("assets/start.png");
-    texEnd = LoadTexture("assets/end.png");
     circle = LoadTexture("assets/tanahkosong.png");
+    timerTex = LoadTexture("assets/timer.png");
+
 
     for (int i = 0; i < 3; i++)
     {
@@ -65,8 +72,8 @@ void InitResources(void)
 void UnloadResources(void)
 {
     UnloadTexture(sheetTiles);
-    UnloadTexture(texStart);
-    UnloadTexture(texEnd);
+    UnloadTexture(timerTex);
+    UnloadTexture(timerTex);
     if (texturesLoaded)
     {
         for (int i = 0; i < 3; i++)
@@ -148,6 +155,39 @@ void DrawTowers()
     {
         DrawTower(current->type, current->row, current->col);
         current = current->next;
+    }
+}
+void DrawGameTimer(float globalScale, float offsetX, float offsetY, int timerRow, int timerCol)
+{
+    float tileScreenSize = TILE_SIZE * globalScale;
+    float timerCenterX = offsetX + timerCol * tileScreenSize + tileScreenSize / 2.0f;
+    float timerCenterY = offsetY + timerRow * tileScreenSize + tileScreenSize / 2.0f;
+    
+    Vector2 position = { timerCenterX, timerCenterY };
+    float timerRadius = (TILE_SIZE / 2.0f) * globalScale * TIMER_OVERALL_SIZE_FACTOR;
+
+    if (waveTimerCurrentTime < waveTimerDuration)
+    {
+        waveTimerCurrentTime += GetFrameTime();
+    }
+    else if (waveTimerVisible) {
+        timerFastForwardActive = true;
+        waveTimerVisible = false;
+    }
+
+    float progress = waveTimerCurrentTime / waveTimerDuration;
+    if (progress > 1.0f) progress = 1.0f; 
+    float angle = 360.0f * progress;
+
+    if (waveTimerVisible) {
+        DrawCircleSector(position, timerRadius, -90, -90 + angle, 100, RED);
+        DrawCircle(position.x, position.y, timerRadius * 0.9f, LIGHTGRAY);
+
+        Rectangle destination = { position.x, position.y, timerRadius * TIMER_IMAGE_DISPLAY_FACTOR, timerRadius * TIMER_IMAGE_DISPLAY_FACTOR };
+        Vector2 origin = { destination.width / 2.0f, destination.height / 2.0f };
+        
+        Rectangle source = { 0, 0, (float)timerTex.width, (float)timerTex.height }; 
+        DrawTexturePro(timerTex, source, destination, origin, 0.0f, WHITE);
     }
 }
 void handleInput()
