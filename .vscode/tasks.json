@@ -9,14 +9,14 @@
                 "PLATFORM=PLATFORM_DESKTOP",
                 "BUILD_MODE=DEBUG",
                 "PROJECT_NAME=game",
-                "OBJS=main.c object.c"
+                "OBJS=main.c"
             ],
             "windows": {
                 "command": "mingw32-make.exe",
                 "args": [
                     "RAYLIB_PATH=C:/raylib/raylib",
                     "PROJECT_NAME=game",
-                    "OBJS=main.c object.c",
+                    "OBJS=main.c",
                     "BUILD_MODE=DEBUG"
                 ]
             },
@@ -33,14 +33,14 @@
             "args": [
                 "PLATFORM=PLATFORM_DESKTOP",
                 "PROJECT_NAME=game",
-                "OBJS=main.c object.c"
+                "OBJS=main.c"
             ],
             "windows": {
                 "command": "mingw32-make.exe",
                 "args": [
                     "RAYLIB_PATH=C:/raylib/raylib",
                     "PROJECT_NAME=game",
-                    "OBJS=main.c object.c"
+                    "OBJS=main.c"
                 ]
             },
             "group": "build",
