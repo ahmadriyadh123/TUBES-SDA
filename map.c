@@ -47,7 +47,7 @@ void InitResources(void)
 
     texStart = LoadTexture("assets/start.png");
     texEnd = LoadTexture("assets/end.png");
-    circle = LoadTexture("assets/kosong.png");
+    circle = LoadTexture("assets/tanahkosong.png");
 
     for (int i = 0; i < 3; i++)
     {
