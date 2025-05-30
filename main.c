@@ -35,7 +35,6 @@ int main(void)
         DrawGameTimer(TILE_SCALE, 0.0f, 0.0f, timerMapRow, timerMapCol);
         DrawDecorations(TILE_SCALE, 0.0f, 0.0f);
 
-
         EndDrawing();
     }
 

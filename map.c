@@ -18,17 +18,23 @@
 #include "map.h"
 
 int map[ROWS][COLS] = {
-    {0, 8, 37, 53, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3},
-    {0, 8, 37, 53, 0, 0, 0, 0, 0, 0, 0, 8, 37, 37, 37},
-    {0, 8, 37, 53, 0, 0, 0, 0, 0, 0, 0, 8, 37, 53, 34},
-    {0, 8, 37, 53, 0, 0, 0, 0, 0, 0, 0, 8, 37, 53, 0},
-    {0, 8, 37, 25, 3, 3, 3, 3, 3, 4, 3, 8, 37, 4, 0},
-    {0, 4, 37, 37, 37, 37, 37, 37, 37, 37, 37, 37, 37, 53, 0},
-    {0, 0, 34, 34, 34, 4, 34, 34, 34, 34, 34, 34, 34, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,37,53,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,8,37,53,0,0},
+    {3,3,1,3,0,0,0,0,37,37,37,37,37,37,37,1,0,0,0,0,1,37,53,0,0},
+    {37,37,37,37,53,0,0,0,37,1,0,0,1,0,37,0,0,0,0,0,8,37,53,0,0},
+    {34,34,1,37,53,0,0,1,37,0,0,0,0,0,37,1,0,0,0,0,8,37,1,0,0},
+    {0,0,8,37,1,0,0,0,37,0,0,0,0,0,37,1,0,0,0,0,8,37,53,0,0},
+    {0,0,8,37,53,3,3,1,37,1,13,3,3,1,37,3,3,0,0,0,1,37,53,0,0},
+    {0,0,1,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,1,0,8,37,1,0,0},
+    {0,0,0,0,8,37,1,34,34,1,34,34,34,1,34,34,1,37,53,0,8,37,53,0,0},
+    {0,0,0,0,1,37,53,0,0,0,0,0,0,0,0,0,0,37,53,0,8,37,1,0,0},
+    {0,0,0,0,8,37,53,0,0,0,0,0,0,0,0,0,1,37,53,0,8,37,53,0,0},
+    {3,3,3,1,3,37,1,0,0,0,0,0,0,0,0,0,8,37,1,0,8,37,53,0,0},
+    {37,37,37,37,37,37,53,0,0,0,0,0,0,0,0,0,8,37,53,0,1,37,53,0,0},
+    {34,1,34,34,34,1,0,0,0,0,0,0,0,0,0,0,8,37,53,0,8,37,53,1,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,37,53,0,8,37,53,0,0}
 };
+
 Texture2D sheetTiles;
 Texture2D circle;
 Texture2D timerTex;
@@ -48,9 +54,11 @@ float waveTimerCurrentTime = 0.0f;
 float waveTimerDuration = 20.0f;
 bool waveTimerVisible = true;
 
-int timerMapRow = 0;
-int timerMapCol = 2;
+int timerMapRow = 12;
+int timerMapCol = 0;
 
+TowerNode *towerList = NULL;
+Decoration *decorationsListHead = NULL;
 DecorationData DecorationsArray[MAX_DECORATIONS];
 int DecorationsCount = 0;
 
@@ -79,14 +87,14 @@ void InitResources(void)
 
     AddDecoration(DECORATION_TREE1, 2, 0);
     AddDecoration(DECORATION_TREE1, 7, 12);
-    AddDecoration(DECORATION_TREE1, 8, 3);
+    AddDecoration(DECORATION_TREE1, 11, 11);
     AddDecoration(DECORATION_TREE1, 9, 0);
-    AddDecoration(DECORATION_TREE1, 9, 7);
+    AddDecoration(DECORATION_TREE1, 13, 14);
     AddDecoration(DECORATION_TREE1, 4, 5);
     AddDecoration(DECORATION_TREE2, 0, 6);
-    AddDecoration(DECORATION_TREE2, 2, 4);
-    AddDecoration(DECORATION_TREE2, 4, 0);
-    AddDecoration(DECORATION_TREE2, 3, 8);
+    AddDecoration(DECORATION_TREE2, 1, 4);
+    AddDecoration(DECORATION_TREE2, 2, 8);
+    AddDecoration(DECORATION_TREE2, 7, 0);
     AddDecoration(DECORATION_TREE2, 9, 13);
     AddDecoration(DECORATION_BUSH, 0, 4);
 }
@@ -136,7 +144,6 @@ Rectangle GetTileSourceRect(int index)
     int y = (index / cols) * tileHeight;
     return (Rectangle){x, y, tileWidth, tileHeight};
 }
-TowerNode *towerList = NULL;
 
 void AddDecoration(DecorationType type, int row, int col) {
     if (DecorationsCount < MAX_DECORATIONS) {
@@ -290,7 +297,7 @@ void handleInput()
         int col = m.x / (TILE_SIZE * TILE_SCALE);
         int row = m.y / (TILE_SIZE * TILE_SCALE);
 
-        if (map[row][col] == 4)
+        if (map[row][col] == 1)
         {
             map[row][col] = TOWER1;
             AddTowerToList(TOWER1, row, col);
@@ -316,7 +323,7 @@ void DrawMap(void)
                 TILE_SIZE * TILE_SCALE};
             DrawTexturePro(sheetTiles, src, dst, (Vector2){0, 0}, 0.0f, WHITE);
 
-            if (tileIndex == 4)
+            if (tileIndex == 1)
             {
                 Rectangle circleSrc = {0, 0, 63, 64};
                 Rectangle circleDst = dst;

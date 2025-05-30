@@ -20,14 +20,14 @@
 
 #define TIMER_OVERALL_SIZE_FACTOR 1.0f
 #define TIMER_IMAGE_DISPLAY_FACTOR 1.5f
-#define ROWS 10
-#define COLS 15
-#define TILE_SIZE 32
+#define ROWS 15
+#define COLS 25
+#define TILE_SIZE 25    
 #define TILE_SCALE 3.0f
-#define TOWER_SCALE 2.0f
+#define TOWER_SCALE 1.5f
 #define NUM_FRAMES 6
-#define FRAME_SPEED 3
-#define DECORATION_DRAW_SCALE 0.5f
+#define FRAME_SPEED 0.05f
+#define DECORATION_DRAW_SCALE 0.3f
 #define MAX_DECORATIONS 20 
 
 extern int map[ROWS][COLS];
@@ -42,9 +42,9 @@ typedef enum {
 
 typedef enum
 {
-    TOWER1 = 4,
-    TOWER2 = 5,
-    TOWER3 = 6
+    TOWER1 = 1,
+    TOWER2 = 2,
+    TOWER3 = 3
 } TowerType;
 
 typedef struct
