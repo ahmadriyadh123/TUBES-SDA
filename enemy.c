@@ -541,3 +541,13 @@ void DrawGameTimer(const EnemyWave *wave, float globalScale, float offsetX, floa
         DrawTexturePro(wave->timerTexture, source, destination, (Vector2){0, 0}, 0.0f, WHITE);
     }
 }
+
+int GetWaveTotal(const EnemyWave *wave) { return wave ? wave->total : 0; }
+int GetWaveActiveCount(const EnemyWave *wave) { return wave ? wave->activeCount : 0; }
+int GetWaveNum(const EnemyWave *wave) { return wave ? wave->waveNum : 0; }
+float GetWaveTimerCurrentTime(const EnemyWave *wave) { return wave ? wave->timerCurrentTime : 0.0f; }
+float GetWaveTimerDuration(const EnemyWave *wave) { return wave ? wave->timerDuration : 0.0f; }
+bool GetWaveTimerVisible(const EnemyWave *wave) { return wave ? wave->timerVisible : false; }
+bool GetWaveActive(const EnemyWave *wave) { return wave ? wave->active : false; }
+int GetTimerMapRow(const EnemyWave *wave) { return wave ? wave->timerMapRow : 0; }
+int GetTimerMapCol(const EnemyWave *wave) { return wave ? wave->timerMapCol : 0; }

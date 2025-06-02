@@ -123,4 +123,14 @@ void SetWaveActive(EnemyWave *wave, bool active);
 void SetTimerMapRow(EnemyWave *wave, int row);
 void SetTimerMapCol(EnemyWave *wave, int col);
 
+int GetWaveTotal(const EnemyWave *wave);
+int GetWaveActiveCount(const EnemyWave *wave);
+int GetWaveNum(const EnemyWave *wave);
+float GetWaveTimerCurrentTime(const EnemyWave *wave);
+float GetWaveTimerDuration(const EnemyWave *wave);
+bool GetWaveTimerVisible(const EnemyWave *wave);
+bool GetWaveActive(const EnemyWave *wave);
+int GetTimerMapRow(const EnemyWave *wave);
+int GetTimerMapCol(const EnemyWave *wave);
+
 #endif
