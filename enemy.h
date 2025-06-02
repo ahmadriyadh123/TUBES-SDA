@@ -113,16 +113,6 @@ bool AllEnemiesInWaveFinished(const EnemyWave *wave);
 void DrawGameTimer(const EnemyWave *wave, float globalScale, float offsetX, float offsetY, int mapRow, int mapCol);
 
 
-int GetWaveTotal(const EnemyWave *wave);
-int GetWaveActiveCount(const EnemyWave *wave);
-int GetWaveNum(const EnemyWave *wave);
-float GetWaveTimerCurrentTime(const EnemyWave *wave);
-float GetWaveTimerDuration(const EnemyWave *wave);
-bool GetWaveTimerVisible(const EnemyWave *wave);
-bool GetWaveActive(const EnemyWave *wave);
-int GetTimerMapRow(const EnemyWave *wave);
-int GetTimerMapCol(const EnemyWave *wave);
-
 void SetWaveTotal(EnemyWave *wave, int total);
 void SetWaveActiveCount(EnemyWave *wave, int count);
 void SetWaveNum(EnemyWave *wave, int num);

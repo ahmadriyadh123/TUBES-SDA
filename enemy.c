@@ -83,80 +83,6 @@ void UnloadAnimSprite(AnimSprite *sprite)
     }
 }
 
-EnemyWave CreateWave(int count, int waveNum)
-{
-    EnemyWave wave = {0};
-    if (count <= 0)
-    {
-        wave.total = 0;
-        return wave;
-    }
-    wave.allEnemies = (Enemy *)malloc(sizeof(Enemy) * count);
-    if (wave.allEnemies == NULL)
-    {
-        TraceLog(LOG_ERROR, "Failed to allocate memory for enemies in wave.");
-        wave.total = 0;
-        return wave;
-    }
-    wave.total = count;
-    wave.spawnedCount = 0;
-    wave.activeCount = 0;
-    wave.nextSpawnIndex = 0;
-    wave.spawnTimer = 0.0f;
-
-    for (int i = 0; i < count; i++)
-    {
-        wave.allEnemies[i].t = 0.0f;
-        wave.allEnemies[i].speed = 30.0f + (waveNum * 3.0f) + (rand() % 20);
-        wave.allEnemies[i].segment = 0;
-        wave.allEnemies[i].active = false;
-        wave.allEnemies[i].spawned = false;
-        wave.allEnemies[i].spriteType = rand() % 2;
-        if (pathCount > 0)
-        {
-            wave.allEnemies[i].position = path[0];
-        }
-        else
-        {
-            wave.allEnemies[i].position = (Vector2){0, 0};
-        }
-    }
-    TraceLog(LOG_INFO, "Wave %d created with %d enemies.", waveNum, count);
-    return wave;
-}
-
-static void BuildPathDFS_Internal(int x, int y, bool visited[MAP_ROWS][MAP_COLS],
-                                  Vector2 outPath[], int *count)
-{
-    if (y < 0 || y >= MAP_ROWS || x < 0 || x >= MAP_COLS)
-        return;
-
-    if (visited[y][x] || !IsPathTile(y, x))
-        return;
-    if (*count >= MAX_PATH_POINTS)
-    {
-        TraceLog(LOG_WARNING, "MAX_PATH_POINTS reached in BuildPathDFS_Internal");
-        return;
-    }
-
-    visited[y][x] = true;
-    outPath[*count] = (Vector2){x * (float)TILE_SIZE_PX + TILE_SIZE_PX / 2.0f,
-                                y * (float)TILE_SIZE_PX + TILE_SIZE_PX / 2.0f};
-    (*count)++;
-
-    for (int d = 0; d < 4; d++)
-    {
-        int nx = x + dx_path[d];
-        int ny = y + dy_path[d];
-
-        if (nx >= 0 && nx < MAP_COLS && ny >= 0 && ny < MAP_ROWS &&
-            IsPathTile(ny, nx) && !visited[ny][nx])
-        {
-            BuildPathDFS_Internal(nx, ny, visited, outPath, count);
-        }
-    }
-}
-
 void Enemies_BuildPath(int startX, int startY)
 {
     bool visited[MAP_ROWS][MAP_COLS];
@@ -203,19 +129,6 @@ void Enemies_ShutdownAssets(void)
     UnloadAnimSprite(&enemy1_sprite);
     UnloadAnimSprite(&enemy2_sprite);
     TraceLog(LOG_INFO, "Enemy assets unloaded.");
-}
-
-void FreeWave(EnemyWave *wave)
-{
-    if (wave && wave->allEnemies)
-    {
-        free(wave->allEnemies);
-        wave->allEnemies = NULL;
-    }
-    if (wave)
-    {
-        *wave = (EnemyWave){0};
-    }
 }
 
 bool AllEnemiesInWaveFinished(EnemyWave wave)
@@ -484,6 +397,18 @@ void SetEnemyPathIndex(Enemy *enemy, int index)
         enemy->segment = index;
 }
 
+EnemyWave CreateWave(int startRow, int startCol)
+{
+    currentWave = (EnemyWave){0};
+    SetWaveTotal(&currentWave, 5);
+
+    currentWave.allEnemies = (Enemy *)malloc(sizeof(Enemy) * currentWave.total);
+    if (currentWave.allEnemies == NULL)
+    {
+        TraceLog(LOG_ERROR, "Failed to allocate memory for enemies in wave. Returning empty wave.");
+        currentWave.total = 0;
+        return currentWave;
+    }
     SetWaveActiveCount(&currentWave, 0);
     currentWave.spawnedCount = 0;
     currentWave.nextSpawnIndex = 0;
@@ -495,3 +420,68 @@ void SetEnemyPathIndex(Enemy *enemy, int index)
     SetWaveActive(&currentWave, false);
     SetTimerMapRow(&currentWave, startRow);
     SetTimerMapCol(&currentWave, startCol);
+
+    currentWave.timerTexture = LoadTextureSafe("assets/timer.png");
+    if (currentWave.timerTexture.id == 0)
+    {
+        TraceLog(LOG_WARNING, "Failed to load assets/timer.png for wave timer.");
+    }
+
+    Enemies_BuildPath(startCol, startRow);
+
+    for (int i = 0; i < currentWave.total; i++)
+    {
+        Enemy *e = &currentWave.allEnemies[i];
+        e->t = 0.0f;
+        e->speed = 30.0f + (currentWave.waveNum * 3.0f) + (rand() % 20);
+        e->active = false;
+        e->spawned = false;
+        e->segment = 0;
+        e->position = (Vector2){0, 0};
+        e->hp = 100 + (currentWave.waveNum * 10);
+        e->spriteType = rand() % 2;
+        EnemyTypeProperties *props = &enemy_properties[e->spriteType]; // Ambil properti yang sesuai
+
+        if (e->spriteType == 0)
+        {
+            e->animData = enemy1_anim_data;
+            e->drawScale = props->drawScale;
+        }
+        else
+        {
+            e->animData = enemy2_anim_data;
+            e->drawScale = props->drawScale;
+        }
+
+        if (e->animData.texture.id == 0)
+        {
+            TraceLog(LOG_ERROR, "ERROR: Enemy %d (Type %d) has an invalid AnimSprite texture ID after assignment!", i, e->spriteType);
+        }
+        else
+        {
+            TraceLog(LOG_DEBUG, "Enemy %d (Type %d) AnimSprite texture ID: %d, Width: %d, Height: %d", i, e->spriteType, e->animData.texture.id, e->animData.texture.width, e->animData.texture.height);
+        }
+        e->animData.currentFrame = 0;
+        e->animData.frameCounter = 0.0f;
+    }
+    TraceLog(LOG_INFO, "Wave %d created with %d enemies. Path points: %d.", currentWave.waveNum, currentWave.total, currentWave.pathCount);
+    return currentWave;
+}
+
+void FreeWave(EnemyWave *wave)
+{
+    if (wave)
+    {
+        if (wave->allEnemies)
+        {
+            free(wave->allEnemies);
+            wave->allEnemies = NULL;
+        }
+        if (wave->timerTexture.id != 0)
+        {
+            UnloadTextureSafe(&wave->timerTexture);
+            wave->timerTexture = (Texture2D){0};
+        }
+        *wave = (EnemyWave){0};
+    }
+}
