@@ -1,8 +1,7 @@
-#ifndef STATE
-#define STATE
+#ifndef STATE_H
+#define STATE_H
 
 #include <stdbool.h>
-#include "raylib.h"
 
 void InitGameState();
 void DecreaseLife();

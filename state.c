@@ -10,7 +10,9 @@ void InitGameState() {
 }
 
 void DecreaseLife() {
-    if (lives > 0) lives--;
+    if (lives > 0) {
+        lives--;
+    }
 }
 
 int GetLives() {
@@ -22,8 +24,8 @@ bool IsGameOver() {
 }
 
 void DrawLives() {
-    DrawText(TextFormat("Lives: %d", lives), 10, 40, 20, MAROON);
-    if (lives <= 0) {
-        DrawText("GAME OVER!", 300, 250, 40, RED);
+    DrawText(TextFormat("Lives: %d", lives), 10, 10, 20, MAROON); // Posisi kiri atas
+    if (IsGameOver()) { // Menampilkan pesan Game Over jika nyawa habis
+        DrawText("GAME OVER!", GetScreenWidth()/2 - MeasureText("GAME OVER!", 40)/2, GetScreenHeight()/2 - 20, 40, RED);
     }
 }
