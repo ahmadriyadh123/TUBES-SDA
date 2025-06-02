@@ -483,3 +483,15 @@ void SetEnemyPathIndex(Enemy *enemy, int index)
     if (enemy)
         enemy->segment = index;
 }
+
+    SetWaveActiveCount(&currentWave, 0);
+    currentWave.spawnedCount = 0;
+    currentWave.nextSpawnIndex = 0;
+    currentWave.spawnTimer = 0.0f;
+    SetWaveNum(&currentWave, 1);
+    SetWaveTimerCurrentTime(&currentWave, 0.0f);
+    SetWaveTimerDuration(&currentWave, WAVE_TIMER_DURATION);
+    SetWaveTimerVisible(&currentWave, true);
+    SetWaveActive(&currentWave, false);
+    SetTimerMapRow(&currentWave, startRow);
+    SetTimerMapCol(&currentWave, startCol);
