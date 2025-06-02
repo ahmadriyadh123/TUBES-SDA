@@ -397,36 +397,6 @@ void SetEnemyPathIndex(Enemy *enemy, int index)
         enemy->segment = index;
 }
 
-void DrawGameTimer(const EnemyWave *wave, float globalScale, float offsetX, float offsetY, int timerRow, int timerCol)
-{
-    if (!wave || !GetWaveTimerVisible(wave))
-        return;
-    float tileScreenSize = TILE_SIZE_PX * globalScale;
-    float timerCenterX = offsetX + timerCol * tileScreenSize + tileScreenSize / 2.0f;
-    float timerCenterY = offsetY + timerRow * tileScreenSize + tileScreenSize / 2.0f;
-    Vector2 position = {timerCenterX, timerCenterY};
-    float timerRadius = (TILE_SIZE_PX / 2.0f) * globalScale * TIMER_OVERALL_SIZE_FACTOR;
-    float progress = GetWaveTimerCurrentTime(wave) / GetWaveTimerDuration(wave);
-    if (progress < 0.0f)
-        progress = 0.0f;
-    if (progress > 1.0f)
-        progress = 1.0f;
-    float angle = 360.0f * progress;
-    DrawCircleSector(position, timerRadius, -90, -90 + angle, 100, RED);
-    DrawCircle(position.x, position.y, timerRadius * 0.9f, LIGHTGRAY);
-    float iconDiameter = timerRadius * TIMER_IMAGE_DISPLAY_FACTOR;
-    Rectangle destination = {
-        position.x - iconDiameter,
-        position.y - iconDiameter,
-        iconDiameter * 2.0f,
-        iconDiameter * 2.0f};
-    Rectangle source = {0, 0, (float)wave->timerTexture.width, (float)wave->timerTexture.height};
-    if (wave->timerTexture.id != 0)
-    {
-        DrawTexturePro(wave->timerTexture, source, destination, (Vector2){0, 0}, 0.0f, WHITE);
-    }
-}
-
 EnemyWave CreateWave(int startRow, int startCol)
 {
     currentWave = (EnemyWave){0};
@@ -513,5 +483,61 @@ void FreeWave(EnemyWave *wave)
             wave->timerTexture = (Texture2D){0};
         }
         *wave = (EnemyWave){0};
+    }
+}
+
+bool AllEnemiesInWaveFinished(const EnemyWave *wave)
+{
+    return (wave && wave->spawnedCount >= wave->total && wave->activeCount <= 0);
+}
+void UpdateWaveTimer(EnemyWave *wave, float deltaTime)
+{
+    if (!wave)
+        return;
+    if (GetWaveActive(wave))
+    {
+        return;
+    }
+    if (GetWaveTimerVisible(wave))
+    {
+        float timer = GetWaveTimerCurrentTime(wave) + deltaTime;
+        SetWaveTimerCurrentTime(wave, timer);
+        TraceLog(LOG_DEBUG, "Wave %d Timer: %.2f / %.2f", wave->waveNum, timer, GetWaveTimerDuration(wave));
+        if (timer >= GetWaveTimerDuration(wave))
+        {
+            SetWaveTimerCurrentTime(wave, 0.0f);
+            SetWaveTimerVisible(wave, false);
+            SetWaveActive(wave, true);
+            TraceLog(LOG_INFO, "Wave %d timer finished. Wave ACTIVATED!", wave->waveNum);
+        }
+    }
+}
+void DrawGameTimer(const EnemyWave *wave, float globalScale, float offsetX, float offsetY, int timerRow, int timerCol)
+{
+    if (!wave || !GetWaveTimerVisible(wave))
+        return;
+    float tileScreenSize = TILE_SIZE_PX * globalScale;
+    float timerCenterX = offsetX + timerCol * tileScreenSize + tileScreenSize / 2.0f;
+    float timerCenterY = offsetY + timerRow * tileScreenSize + tileScreenSize / 2.0f;
+    Vector2 position = {timerCenterX, timerCenterY};
+    float timerRadius = (TILE_SIZE_PX / 2.0f) * globalScale * TIMER_OVERALL_SIZE_FACTOR;
+    float progress = GetWaveTimerCurrentTime(wave) / GetWaveTimerDuration(wave);
+    if (progress < 0.0f)
+        progress = 0.0f;
+    if (progress > 1.0f)
+        progress = 1.0f;
+    float angle = 360.0f * progress;
+    DrawCircleSector(position, timerRadius, -90, -90 + angle, 100, RED);
+    DrawCircle(position.x, position.y, timerRadius * 0.9f, LIGHTGRAY);
+    float iconDiameter = timerRadius * TIMER_IMAGE_DISPLAY_FACTOR;
+    Rectangle destination = {
+        position.x - iconDiameter,
+        position.y - iconDiameter,
+        iconDiameter * 2.0f,
+        iconDiameter * 2.0f};
+    Rectangle source = {0, 0, (float)wave->timerTexture.width, (float)wave->timerTexture.height};
+    if (wave->timerTexture.id != 0)
+    {
+        DrawTexturePro(wave->timerTexture, source, destination, (Vector2){0, 0}, 0.0f, WHITE);
     }
 }
