@@ -1,8 +1,9 @@
-#include "enemy.h"
-#include "map.h"
-#include "raymath.h"
-#include <stdlib.h>
+#include <raylib.h>
+#include <raymath.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
 
 #define TIMER_OVERALL_SIZE_FACTOR 0.8f
 #define TIMER_IMAGE_DISPLAY_FACTOR 0.8f
@@ -17,20 +18,13 @@ static int dy_path[] = {-1, 0, 1, 0};
 
 EnemyWave currentWave = {0};
 
-void Enemies_InitAssets(void)
-{
-    enemy1_sprite = LoadAnimSprite("assets/enemy1.png", 14, 5, 4, 10, 7);
-    enemy2_sprite = LoadAnimSprite("assets/enemy2.png", 4, 6, 0, 12, 4);
-    TraceLog(LOG_INFO, "Enemy assets loaded.");
-}
-
 AnimSprite LoadAnimSprite(const char *filename, int cols, int rows, int rowIndex, int speed, int frameCount)
 {
     AnimSprite sprite = {0};
-    sprite.texture = LoadTexture(filename);
+    sprite.texture = LoadTextureSafe(filename);
     if (sprite.texture.id == 0)
     {
-        TraceLog(LOG_WARNING, "Gagal memuat tekstur: %s", filename);
+        TraceLog(LOG_ERROR, "ERROR: LoadAnimSprite failed for: %s", filename);
     }
     sprite.frameCols = cols;
     sprite.frameRows = rows;
@@ -38,7 +32,7 @@ AnimSprite LoadAnimSprite(const char *filename, int cols, int rows, int rowIndex
     sprite.frameSpeed = speed;
     sprite.frameCount = frameCount;
     sprite.currentFrame = 0;
-    sprite.frameCounter = 0;
+    sprite.frameCounter = 0.0f;
     sprite.frameWidth = sprite.texture.width / cols;
     sprite.frameHeight = sprite.texture.height / rows;
     sprite.frameRec = (Rectangle){0.0f, (float)rowIndex * sprite.frameHeight, (float)sprite.frameWidth, (float)sprite.frameHeight};
@@ -49,10 +43,13 @@ void UpdateAnimSprite(AnimSprite *sprite)
 {
     if (sprite->texture.id == 0)
         return;
-    sprite->frameCounter++;
-    if (sprite->frameCounter >= (GetFPS() / sprite->frameSpeed))
+
+    sprite->frameCounter += GetFrameTime();
+    float frameDuration = 1.0f / sprite->frameSpeed;
+
+    if (sprite->frameCounter >= frameDuration)
     {
-        sprite->frameCounter = 0;
+        sprite->frameCounter -= frameDuration;
         sprite->currentFrame++;
         if (sprite->currentFrame >= sprite->frameCount)
         {
@@ -62,7 +59,7 @@ void UpdateAnimSprite(AnimSprite *sprite)
     }
 }
 
-void DrawAnimSprite(AnimSprite *sprite, Vector2 position, float scale, Color tint)
+void DrawAnimSprite(const AnimSprite *sprite, Vector2 position, float scale, Color tint)
 {
     if (sprite->texture.id == 0)
         return;
@@ -78,39 +75,8 @@ void UnloadAnimSprite(AnimSprite *sprite)
 {
     if (sprite->texture.id > 0)
     {
-        UnloadTexture(sprite->texture);
-        sprite->texture.id = 0;
-    }
-}
-
-void Enemies_BuildPath(int startX, int startY)
-{
-    bool visited[MAP_ROWS][MAP_COLS];
-    for (int r = 0; r < MAP_ROWS; r++)
-    {
-        for (int c = 0; c < MAP_COLS; c++)
-        {
-            visited[r][c] = false;
-        }
-    }
-    pathCount = 0;
-
-    if (startX >= 0 && startX < MAP_COLS && startY >= 0 && startY < MAP_ROWS &&
-        IsPathTile(startY, startX))
-    {
-        BuildPathDFS_Internal(startX, startY, visited, path, &pathCount);
-        TraceLog(LOG_INFO, "Enemy path built using visual.c gameMap and IsPathTile. Points: %d. Start: (%d, %d).",
-                 pathCount, startX, startY);
-
-        for (int i = 0; i < pathCount; ++i)
-        {
-            TraceLog(LOG_DEBUG, "Path point %d: (%.1f, %.1f)", i, path[i].x, path[i].y);
-        }
-    }
-    else
-    {
-        TraceLog(LOG_ERROR, "Failed to build enemy path: Start point (%d, %d) is not a valid path tile according to IsPathTile.",
-                 startX, startY);
+        UnloadTextureSafe(&sprite->texture);
+        sprite->texture = (Texture2D){0};
     }
 }
 
@@ -118,26 +84,42 @@ static bool IsPathTile(int row, int col)
 {
     if (row >= 0 && row < MAP_ROWS && col >= 0 && col < MAP_COLS)
     {
-        int tileValue = gameMap[row][col];
+        int tileValue = GetMapTile(row, col);
         return (tileValue == 37);
     }
     return false;
 }
 
-void Enemies_ShutdownAssets(void)
+static void BuildPathDFS_Internal(int x, int y, bool visited[MAP_ROWS][MAP_COLS], Vector2 outPath[], int *count)
 {
-    UnloadAnimSprite(&enemy1_sprite);
-    UnloadAnimSprite(&enemy2_sprite);
-    TraceLog(LOG_INFO, "Enemy assets unloaded.");
-}
+    if (y < 0 || y >= MAP_ROWS || x < 0 || x >= MAP_COLS)
+        return;
 
-bool AllEnemiesInWaveFinished(EnemyWave wave)
-{
-    if (wave.total == 0 && wave.spawnedCount == 0)
-        return true;
-    if (wave.spawnedCount < wave.total)
-        return false;
-    return (wave.activeCount <= 0);
+    if (visited[y][x] || !IsPathTile(y, x))
+        return;
+
+    if (*count >= MAX_PATH_POINTS)
+    {
+        TraceLog(LOG_WARNING, "MAX_PATH_POINTS reached in BuildPathDFS_Internal. Path may be incomplete.");
+        return;
+    }
+
+    visited[y][x] = true;
+    outPath[*count] = (Vector2){x * (float)TILE_SIZE_PX + TILE_SIZE_PX / 2.0f,
+                                y * (float)TILE_SIZE_PX + TILE_SIZE_PX / 2.0f};
+    (*count)++;
+
+    for (int d = 0; d < 4; d++)
+    {
+        int nx = x + dx_path[d];
+        int ny = y + dy_path[d];
+
+        if (nx >= 0 && nx < MAP_COLS && ny >= 0 && ny < MAP_ROWS &&
+            IsPathTile(ny, nx) && !visited[ny][nx])
+        {
+            BuildPathDFS_Internal(nx, ny, visited, outPath, count);
+        }
+    }
 }
 
 void Enemies_BuildPath(int startX, int startY)
@@ -241,28 +223,38 @@ void Enemies_ShutdownAssets(void)
     TraceLog(LOG_INFO, "Enemy assets unloaded.");
 }
 
-void Enemies_Update(EnemyWave *wave, float delta)
+void Enemies_Update(EnemyWave *wave, float deltaTime)
 {
-    if (!wave || !wave->allEnemies || pathCount < 2)
+
+    if (!wave || !wave->allEnemies || wave->pathCount < 2)
+    {
+        if (wave && wave->pathCount < 2)
+        {
+            TraceLog(LOG_DEBUG, "[UPDATE] Wave %d: Path too short (%d points). Skipping update.", wave->waveNum, wave->pathCount);
+        }
         return;
+    }
 
     if (wave->nextSpawnIndex < wave->total)
     {
-        wave->spawnTimer += delta;
+        wave->spawnTimer += deltaTime;
+
         if (wave->spawnTimer >= SPAWN_DELAY)
         {
+            Enemy *e = &wave->allEnemies[wave->nextSpawnIndex];
 
-            if (wave->nextSpawnIndex < wave->total && wave->allEnemies[wave->nextSpawnIndex].spawned == false)
+            if (e->spawned == false)
             {
-                wave->allEnemies[wave->nextSpawnIndex].active = true;
-                wave->allEnemies[wave->nextSpawnIndex].spawned = true;
-                if (pathCount > 0)
-                    wave->allEnemies[wave->nextSpawnIndex].position = path[0];
-                wave->allEnemies[wave->nextSpawnIndex].segment = 0;
-                wave->allEnemies[wave->nextSpawnIndex].t = 0.0f;
+                e->active = true;
+                e->spawned = true;
+                e->position = wave->path[0];
+                e->segment = 0;
+                e->t = 0.0f;
                 wave->spawnedCount++;
                 wave->activeCount++;
+                TraceLog(LOG_INFO, "[SPAWN] Enemy %d (Type %d) spawned at (%.1f, %.1f) in Wave %d! Active Count: %d", wave->nextSpawnIndex, e->spriteType, e->position.x, e->position.y, wave->waveNum, wave->activeCount);
             }
+
             wave->nextSpawnIndex++;
             wave->spawnTimer = 0.0f;
         }
@@ -271,55 +263,76 @@ void Enemies_Update(EnemyWave *wave, float delta)
     for (int i = 0; i < wave->total; i++)
     {
         Enemy *e = &wave->allEnemies[i];
-        if (!e->active)
+
+        if (!e->active || !e->spawned)
             continue;
 
+        UpdateAnimSprite(&e->animData);
+
         int s = e->segment;
-        if (s < pathCount - 1)
+
+        if (s < wave->pathCount - 1)
         {
-            Vector2 startPoint = path[s];
-            Vector2 endPoint = path[s + 1];
+            Vector2 startPoint = wave->path[s];
+            Vector2 endPoint = wave->path[s + 1];
             float segmentLength = Vector2Distance(startPoint, endPoint);
 
             if (segmentLength > 0)
             {
-                e->t += (e->speed * delta) / segmentLength;
+                e->t += (e->speed * deltaTime) / segmentLength;
             }
             else
             {
                 e->t = 1.0f;
+                TraceLog(LOG_WARNING, "[MOVE] Enemy %d: Segment length is 0 at seg %d! Auto advancing t.", i, s);
             }
 
             if (e->t >= 1.0f)
             {
                 e->segment++;
                 s = e->segment;
-                if (s >= pathCount - 1)
+                e->t = fmod(e->t, 1.0f);
+
+                if (s >= wave->pathCount)
                 {
                     e->active = false;
                     wave->activeCount--;
+                    TraceLog(LOG_INFO, "[END] Enemy %d reached end of path (seg %d / %d).", i, s, wave->pathCount);
+                    DecreaseLife(1);
                 }
                 else
                 {
-                    e->t = e->t - 1.0f;
-
-                    e->position = path[s];
+                    e->position = wave->path[s];
+                    TraceLog(LOG_INFO, "[MOVE] Enemy %d: Advanced to Segment %d. New pos: (%.1f, %.1f)", i, s, e->position.x, e->position.y);
                 }
             }
 
-            if (e->active && s < pathCount - 1)
+            if (e->active && s < wave->pathCount - 1)
             {
-                e->position = Vector2Lerp(path[s], path[s + 1], e->t);
+                e->position = Vector2Lerp(wave->path[s], wave->path[s + 1], e->t);
             }
-            else if (e->active && s == pathCount - 1)
+            else if (e->active && s == wave->pathCount - 1)
             {
-                e->position = path[pathCount - 1];
+                e->position = Vector2Lerp(wave->path[s], wave->path[s], 1.0f);
             }
         }
         else
         {
+            if (e->active)
+            {
+                e->active = false;
+                wave->activeCount--;
+                TraceLog(LOG_INFO, "[END] Enemy %d finished path (beyond last segment).", i);
+                DecreaseLife(1);
+            }
+        }
+
+        if (e->active && e->hp <= 0)
+        {
             e->active = false;
             wave->activeCount--;
+            AddMoney(10 + (wave->waveNum * 2));
+            TraceLog(LOG_INFO, "Enemy defeated. Money added. Current money: $%d", GetMoney());
         }
     }
 }
@@ -360,41 +373,14 @@ void Enemies_Draw(const EnemyWave *wave, float globalScale, float offsetX, float
     }
 }
 
-Vector2 GetEnemyPosition(const Enemy *enemy) { return enemy ? enemy->position : (Vector2){0, 0}; }
-int GetEnemyHP(const Enemy *enemy) { return enemy ? enemy->hp : 0; }
-float GetEnemySpeed(const Enemy *enemy) { return enemy ? enemy->speed : 0.0f; }
-bool GetEnemyActive(const Enemy *enemy) { return enemy ? enemy->active : false; }
-bool GetEnemySpawned(const Enemy *enemy) { return enemy ? enemy->spawned : false; }
-int GetEnemyPathIndex(const Enemy *enemy) { return enemy ? enemy->segment : 0; }
-void SetEnemyPosition(Enemy *enemy, Vector2 position)
+void InitWaveAssets(void)
 {
-    if (enemy)
-        enemy->position = position;
+    TraceLog(LOG_INFO, "Wave assets initialized (no global textures loaded here, handled by CreateWave).");
 }
-void SetEnemyHP(Enemy *enemy, int hp)
+
+void ShutdownWaveAssets(void)
 {
-    if (enemy)
-        enemy->hp = hp;
-}
-void SetEnemySpeed(Enemy *enemy, float speed)
-{
-    if (enemy)
-        enemy->speed = speed;
-}
-void SetEnemyActive(Enemy *enemy, bool active)
-{
-    if (enemy)
-        enemy->active = active;
-}
-void SetEnemySpawned(Enemy *enemy, bool spawned)
-{
-    if (enemy)
-        enemy->spawned = spawned;
-}
-void SetEnemyPathIndex(Enemy *enemy, int index)
-{
-    if (enemy)
-        enemy->segment = index;
+    TraceLog(LOG_INFO, "Wave assets shutdown (textures unloaded by FreeWave).");
 }
 
 EnemyWave CreateWave(int startRow, int startCol)
@@ -467,7 +453,6 @@ EnemyWave CreateWave(int startRow, int startCol)
     TraceLog(LOG_INFO, "Wave %d created with %d enemies. Path points: %d.", currentWave.waveNum, currentWave.total, currentWave.pathCount);
     return currentWave;
 }
-
 void FreeWave(EnemyWave *wave)
 {
     if (wave)
@@ -485,7 +470,6 @@ void FreeWave(EnemyWave *wave)
         *wave = (EnemyWave){0};
     }
 }
-
 bool AllEnemiesInWaveFinished(const EnemyWave *wave)
 {
     return (wave && wave->spawnedCount >= wave->total && wave->activeCount <= 0);
@@ -542,6 +526,13 @@ void DrawGameTimer(const EnemyWave *wave, float globalScale, float offsetX, floa
     }
 }
 
+Vector2 GetEnemyPosition(const Enemy *enemy) { return enemy ? enemy->position : (Vector2){0, 0}; }
+int GetEnemyHP(const Enemy *enemy) { return enemy ? enemy->hp : 0; }
+float GetEnemySpeed(const Enemy *enemy) { return enemy ? enemy->speed : 0.0f; }
+bool GetEnemyActive(const Enemy *enemy) { return enemy ? enemy->active : false; }
+bool GetEnemySpawned(const Enemy *enemy) { return enemy ? enemy->spawned : false; }
+int GetEnemyPathIndex(const Enemy *enemy) { return enemy ? enemy->segment : 0; }
+
 int GetWaveTotal(const EnemyWave *wave) { return wave ? wave->total : 0; }
 int GetWaveActiveCount(const EnemyWave *wave) { return wave ? wave->activeCount : 0; }
 int GetWaveNum(const EnemyWave *wave) { return wave ? wave->waveNum : 0; }
@@ -551,3 +542,78 @@ bool GetWaveTimerVisible(const EnemyWave *wave) { return wave ? wave->timerVisib
 bool GetWaveActive(const EnemyWave *wave) { return wave ? wave->active : false; }
 int GetTimerMapRow(const EnemyWave *wave) { return wave ? wave->timerMapRow : 0; }
 int GetTimerMapCol(const EnemyWave *wave) { return wave ? wave->timerMapCol : 0; }
+void SetEnemyPosition(Enemy *enemy, Vector2 position)
+{
+    if (enemy)
+        enemy->position = position;
+}
+void SetEnemyHP(Enemy *enemy, int hp)
+{
+    if (enemy)
+        enemy->hp = hp;
+}
+void SetEnemySpeed(Enemy *enemy, float speed)
+{
+    if (enemy)
+        enemy->speed = speed;
+}
+void SetEnemyActive(Enemy *enemy, bool active)
+{
+    if (enemy)
+        enemy->active = active;
+}
+void SetEnemySpawned(Enemy *enemy, bool spawned)
+{
+    if (enemy)
+        enemy->spawned = spawned;
+}
+void SetEnemyPathIndex(Enemy *enemy, int index)
+{
+    if (enemy)
+        enemy->segment = index;
+}
+void SetWaveTotal(EnemyWave *wave, int total)
+{
+    if (wave)
+        wave->total = total;
+}
+void SetWaveActiveCount(EnemyWave *wave, int count)
+{
+    if (wave)
+        wave->activeCount = count;
+}
+void SetWaveNum(EnemyWave *wave, int num)
+{
+    if (wave)
+        wave->waveNum = num;
+}
+void SetWaveTimerCurrentTime(EnemyWave *wave, float time)
+{
+    if (wave)
+        wave->timerCurrentTime = time;
+}
+void SetWaveTimerDuration(EnemyWave *wave, float duration)
+{
+    if (wave)
+        wave->timerDuration = duration;
+}
+void SetWaveTimerVisible(EnemyWave *wave, bool visible)
+{
+    if (wave)
+        wave->timerVisible = visible;
+}
+void SetWaveActive(EnemyWave *wave, bool active)
+{
+    if (wave)
+        wave->active = active;
+}
+void SetTimerMapRow(EnemyWave *wave, int row)
+{
+    if (wave)
+        wave->timerMapRow = row;
+}
+void SetTimerMapCol(EnemyWave *wave, int col)
+{
+    if (wave)
+        wave->timerMapCol = col;
+}
