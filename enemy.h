@@ -1,66 +1,102 @@
-// #ifndef ENEMY_H
-// #define ENEMY_H
 
-// #include "raylib.h"
-// #include <stdbool.h>
-// // #include "map.h"
+#ifndef ENEMY_H
+#define ENEMY_H
 
-// #define MAX_PATH_POINTS 60
-// #define MAX_WAVES 5
-// #define SPAWN_DELAY 1.0f
+#include "raylib.h"
+#include <stdbool.h>
+#include "map.h" 
 
-// typedef struct AnimSprite
-// {
-//     Texture2D texture;
-//     Rectangle frameRec;
-//     int frameCols, frameRows;
-//     int frameWidth, frameHeight;
-//     int frameCount;
-//     int animRow;
-//     int currentFrame;
-//     int frameCounter;
-//     int frameSpeed;
-// } AnimSprite;
+#define MAX_ENEMIES_PER_WAVE 20
+#define MAX_PATH_POINTS 100
+#define WAVE_TIMER_DURATION 5.0f
+#define SPAWN_DELAY 0.1f 
 
-// typedef struct Enemy
-// {
-//     // Vector2 position;
-//     float t;
-//     float speed;
-//     int segment;
-//     bool active;
-//     bool spawned;
-//     int spriteType;
-// } Enemy;
+typedef struct {
+    Texture2D texture;
+    int frameCols;     
+    int frameRows;     
+    int animRow;       
+    int frameSpeed;    
+    int frameCount;    
+    int currentFrame;  
+    float frameCounter; 
+    int frameWidth;    
+    int frameHeight;   
+    Rectangle frameRec; 
+} AnimSprite;
 
-// typedef struct EnemyWave
-// {
-//     Enemy *allEnemies;
-//     int total;
-//     // int spawnedCount;
-//     // int activeCount;
-//     int nextSpawnIndex;
-//     float spawnTimer;
-// } EnemyWave;
 
-// extern AnimSprite enemy1_sprite;
-// extern AnimSprite enemy2_sprite;
-// extern Vector2 path[MAX_PATH_POINTS];
-// extern int pathCount;
+typedef struct {    
+    Vector2 position;
+    int hp;
+    float speed;
+    bool active;
+    bool spawned;
+    int pathIndex;
+    int segment;        
+    float t;  
+    AnimSprite animData; 
+    int spriteType;     
+    float drawScale;     
+} Enemy;
 
-// AnimSprite LoadAnimSprite(const char *filename, int cols, int rows, int rowIndex, int speed, int frameCount);
-// void UpdateAnimSprite(AnimSprite *sprite);
-// void DrawAnimSprite(AnimSprite *sprite, Vector2 position, float scale, Color tint);
-// void UnloadAnimSprite(AnimSprite *sprite);
+typedef struct {
+    int sheetWidth;
+    int sheetHeight;
+    int totalCols;
+    int totalRows;
+    int animRow;
+    int animSpeed;
+    int frameCount;
+    float drawScale;
+    const char* texturePath; // Path tekstur untuk dimuat
+} EnemyTypeProperties;
 
-// void Enemies_InitAssets(void);
+typedef struct {
+    Enemy *allEnemies; 
+    Vector2 path[MAX_PATH_POINTS];
+    int pathCount;
+    int total;
+    int activeCount;
+    int spawnedCount;      
+    int nextSpawnIndex;    
+    float spawnTimer;      
+    int waveNum;
+    float timerCurrentTime;
+    float timerDuration;
+    bool timerVisible;
+    bool active;
+    int timerMapRow;
+    int timerMapCol;
+    Texture2D timerTexture; 
+} EnemyWave;
 
-// void Enemies_BuildPath(int startX, int startY);
-// EnemyWave CreateWave(int count, int waveNum);
-// void FreeWave(EnemyWave *wave);
-// bool AllEnemiesInWaveFinished(EnemyWave wave);
-// void Enemies_Update(EnemyWave *wave, float delta);
-// void Enemies_Draw(const EnemyWave *wave, float globalScale, float mapScreenOffsetX, float mapScreenOffsetY);
-// void Enemies_ShutdownAssets(void);
+extern EnemyWave currentWave; 
 
-// #endif
+AnimSprite LoadAnimSprite(const char *filename, int cols, int rows, int rowIndex, int speed, int frameCount);
+void UpdateAnimSprite(AnimSprite *sprite);
+void DrawAnimSprite(const AnimSprite *sprite, Vector2 position, float scale, Color tint);
+void UnloadAnimSprite(AnimSprite *sprite);
+
+void Enemies_InitAssets(void);
+void Enemies_ShutdownAssets(void);
+void Enemies_Update(EnemyWave *wave, float deltaTime); 
+void Enemies_Draw(const EnemyWave *wave, float globalScale, float offsetX, float offsetY);
+void Enemies_BuildPath(int startX, int startY); 
+
+Vector2 GetEnemyPosition(const Enemy *enemy);
+int GetEnemyHP(const Enemy *enemy);
+float GetEnemySpeed(const Enemy *enemy);
+bool GetEnemyActive(const Enemy *enemy);
+bool GetEnemySpawned(const Enemy *enemy);
+int GetEnemyPathIndex(const Enemy *enemy); 
+Texture2D GetEnemyTexture(int index); 
+
+void SetEnemyPosition(Enemy *enemy, Vector2 position);
+void SetEnemyHP(Enemy *enemy, int hp);
+void SetEnemySpeed(Enemy *enemy, float speed);
+void SetEnemyActive(Enemy *enemy, bool active);
+void SetEnemySpawned(Enemy *enemy, bool spawned);
+void SetEnemyPathIndex(Enemy *enemy, int index); 
+
+#endif
