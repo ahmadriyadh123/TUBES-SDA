@@ -63,7 +63,7 @@ void PlaceTower(int row, int col, TowerType type)
     *newTower = (Tower){0};
     SetTowerPosition(newTower, (Vector2){col * TILE_SIZE + TILE_SIZE / 2.0f, row * TILE_SIZE + TILE_SIZE / 2.0f});
     SetTowerType(newTower, type);
-    SetTowerDamage(newTower, 10);
+    SetTowerDamage(newTower, 100);
     SetTowerRange(newTower, 100.0f);
     SetTowerAttackSpeed(newTower, 1.0f);
     SetTowerAttackCooldown(newTower, 0.0f);

@@ -17,6 +17,12 @@
 
 #include "raylib.h"
 #include "map.h"
+#include "enemy.h"
+#include "tower.h"
+#include "main_menu.h"
+#include "transition.h"
+#include "economy.h"
+#include "state.h"
 
 int main(void)
 {
