@@ -1,0 +1,7 @@
+# Dev-C++ project files
+*.dev
+*.layout
+*.exe
+*.o
+.vscode/
+Makefile.win
