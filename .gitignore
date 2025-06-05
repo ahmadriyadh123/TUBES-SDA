@@ -3,5 +3,8 @@
 *.layout
 *.exe
 *.o
-.vscode/
 Makefile.win
+main.code-workspace
+resources/
+tempEntities.C
+tempEntities.h
