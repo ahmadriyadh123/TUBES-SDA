@@ -12,6 +12,8 @@
 
 typedef enum {
     TOWER_TYPE_1,
+    TOWER_TYPE_2,
+    TOWER_TYPE_3
 } TowerType;
 
 typedef struct {
@@ -41,6 +43,15 @@ extern float DELETE_BUTTON_DRAW_SCALE;
 
 void InitTowerAssets(void);
 void ShutdownTowerAssets(void);
+
+void PlaceTower(int row, int col, TowerType type);
+void UpdateTowerAttacks(EnemyWave *wave, float deltaTime);
+void DrawTowers(float globalScale, float offsetX, float offsetY);
+void RemoveTower(Tower *towerToRemove); 
+void SellTower(Tower *towerToSell);     
+Tower* GetTowerAtMapCoord(int row, int col); 
+void HideDeleteButton();
+
 
 Vector2 GetTowerPosition(const Tower *tower);
 TowerType GetTowerType(const Tower *tower);

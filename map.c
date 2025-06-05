@@ -67,8 +67,6 @@ Rectangle GetTileSourceRect(int tileIndex) {
     switch (tileIndex) {
         case 0: return (Rectangle){0, 0, TILE_SIZE_PX, TILE_SIZE_PX};
         case 3: return (Rectangle){2 * TILE_SIZE_PX, 0, TILE_SIZE_PX, TILE_SIZE_PX};
-        case 5: return (Rectangle){2 * TILE_SIZE_PX, 0, TILE_SIZE_PX, TILE_SIZE_PX};
-        case 6: return (Rectangle){3 * TILE_SIZE_PX, 0, TILE_SIZE_PX, TILE_SIZE_PX};
         case 8: return (Rectangle){0, 2 * TILE_SIZE_PX, TILE_SIZE_PX, TILE_SIZE_PX};
         case 25: return (Rectangle){5 * TILE_SIZE_PX, 2 * TILE_SIZE_PX, TILE_SIZE_PX, TILE_SIZE_PX};
         case 34: return (Rectangle){2 * TILE_SIZE_PX, 4 * TILE_SIZE_PX, TILE_SIZE_PX, TILE_SIZE_PX};
