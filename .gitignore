@@ -6,5 +6,5 @@
 Makefile.win
 main.code-workspace
 resources/
-tempEntities.C
+tempEntities.c
 tempEntities.h
