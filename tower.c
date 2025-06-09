@@ -8,6 +8,7 @@
 #include "player_resources.h"
 #include <stddef.h>
 #include <stdlib.h>
+#include <math.h>
 
 Tower *towersListHead = NULL;
 Tower *selectedTowerForDeletion = NULL;
@@ -21,6 +22,14 @@ float DELETE_BUTTON_DRAW_SCALE = ORBIT_BUTTON_DRAW_SCALE;
 float UPGRADE_BUTTON_DRAW_SCALE = ORBIT_BUTTON_DRAW_SCALE;
 
 static Texture2D towerTexture = {0};
+static Shot shots[MAX_VISUAL_SHOTS]; 
+
+void InitShots(void) {
+    for (int i = 0; i < MAX_VISUAL_SHOTS; i++) {
+        shots[i].active = false;
+    }
+    TraceLog(LOG_INFO, "SHOTS: Visual shot system initialized.");
+}
 
 void InitTowerAssets()
 {
@@ -47,6 +56,9 @@ void ShutdownTowerAssets()
     HideTowerOrbitUI();
     TraceLog(LOG_INFO, "Tower assets shutdown.");
 }   
+void ShutdownShots(void) {
+    TraceLog(LOG_INFO, "SHOTS: Visual shot system shutdown.");
+}
 
 void ShowTowerOrbitUI(Tower *tower, float currentTileScale, float mapScreenOffsetX, float mapScreenOffsetY)
 {
@@ -263,7 +275,7 @@ void UpdateTowerAttacks(EnemyWave *wave, float deltaTime)
             {
                 int damage = GetTowerDamage(current);
                 SetEnemyHP(enemy, GetEnemyHP(enemy) - damage);
-                SpawnVisualShot(GetTowerPosition(current), enemyPos, RAYWHITE, 3.0f, 0.05f); 
+                SpawnShot(GetTowerPosition(current), enemyPos, RAYWHITE, 3.0f, 0.05f); 
                 SetTowerAttackCooldown(current, GetTowerAttackSpeed(current));
                 if (GetEnemyHP(enemy) <= 0)
                 {
@@ -329,48 +341,98 @@ void DrawTowers(float globalScale, float offsetX, float offsetY)
     }
 }
 
-Vector2 GetTowerPosition(const Tower *tower) { return tower ? tower->position : (Vector2){0, 0}; }
-TowerType GetTowerType(const Tower *tower) { return tower ? tower->type : TOWER_TYPE_1; }
-int GetTowerDamage(const Tower *tower) { return tower ? tower->damage : 0; }
-float GetTowerRange(const Tower *tower) { return tower ? tower->range : 0.0f; }
-float GetTowerAttackSpeed(const Tower *tower) { return tower ? tower->attackSpeed : 0.0f; }
-float GetTowerAttackCooldown(const Tower *tower) { return tower ? tower->attackCooldown : 0.0f; }
-bool GetTowerActive(const Tower *tower) { return tower ? tower->active : false; }
+void SpawnShot(Vector2 startPos, Vector2 endPos, Color color, float radius, float travelTime) { 
+    for (int i = 0; i < MAX_VISUAL_SHOTS; i++) {
+        if (!shots[i].active) {
+            shots[i].startPos = startPos;
+            shots[i].endPos = endPos;
+            shots[i].travelTime = fmax(travelTime, 0.01f);
+            shots[i].currentTravelTime = 0.0f;
+            shots[i].color = color;
+            shots[i].radius = radius;
+            shots[i].active = true;
+            shots[i].isImpactEffect = false; 
+            shots[i].impactTimer = 0.0f;
+            shots[i].impactDuration = 0.0f;
+            shots[i].impactMaxSize = 0.0f;
+            return;
+        }
+    }
+    TraceLog(LOG_WARNING, "SHOTS: Max visual shots reached, cannot spawn new moving shot.");
+}
 
-void SetTowerPosition(Tower *tower, Vector2 position)
-{
-    if (tower)
-        tower->position = position;
+
+void SpawnImpactEffect(Vector2 position, Color color, float radius, float duration) {
+    for (int i = 0; i < MAX_VISUAL_SHOTS; i++) {
+        if (!shots[i].active) {
+            shots[i].startPos = position; 
+            shots[i].endPos = position;   
+            shots[i].travelTime = 0.0f;     
+            shots[i].currentTravelTime = 0.0f;
+            shots[i].color = color;
+            shots[i].radius = radius;
+            shots[i].active = true;
+            shots[i].isImpactEffect = true; 
+            shots[i].impactTimer = 0.0f;
+            shots[i].impactDuration = fmax(duration, 0.01f); 
+            shots[i].impactMaxSize = radius * 2.0f; 
+            return;
+        }
+    }
+    TraceLog(LOG_WARNING, "SHOTS: Max visual shots reached, cannot spawn new impact effect.");
 }
-void SetTowerType(Tower *tower, TowerType type)
-{
-    if (tower)
-        tower->type = type;
+
+void UpdateShots(float deltaTime) {
+    for (int i = 0; i < MAX_VISUAL_SHOTS; i++) {
+        if (shots[i].active) {
+            if (shots[i].isImpactEffect) {
+                
+                shots[i].impactTimer += deltaTime;
+                if (shots[i].impactTimer >= shots[i].impactDuration) {
+                    shots[i].active = false; 
+                }
+            } else {
+                
+                shots[i].currentTravelTime += deltaTime;
+                if (shots[i].currentTravelTime >= shots[i].travelTime) {
+                    shots[i].active = false; 
+                    
+                    
+                    SpawnImpactEffect(shots[i].endPos, shots[i].color, shots[i].radius, 0.1f); 
+                    
+                }
+            }
+        }
+    }
 }
-void SetTowerDamage(Tower *tower, int damage)
-{
-    if (tower)
-        tower->damage = damage;
-}
-void SetTowerRange(Tower *tower, float range)
-{
-    if (tower)
-        tower->range = range;
-}
-void SetTowerAttackSpeed(Tower *tower, float attackSpeed)
-{
-    if (tower)
-        tower->attackSpeed = attackSpeed;
-}
-void SetTowerAttackCooldown(Tower *tower, float cooldown)
-{
-    if (tower)
-        tower->attackCooldown = cooldown;
-}
-void SetTowerActive(Tower *tower, bool active)
-{
-    if (tower)
-        tower->active = active;
+
+void DrawShots(float globalScale, float offsetX, float offsetY) {
+    for (int i = 0; i < MAX_VISUAL_SHOTS; i++) {
+        if (shots[i].active) {
+            if (shots[i].isImpactEffect) {
+                
+                float impactProgress = shots[i].impactTimer / shots[i].impactDuration; 
+                float currentRadius = shots[i].radius * (1.0f + impactProgress * (shots[i].impactMaxSize / shots[i].radius - 1.0f));
+                Color currentColor = Fade(shots[i].color, 1.0f - impactProgress); 
+
+                Vector2 screenImpactPos = {
+                    offsetX + shots[i].startPos.x * globalScale,
+                    offsetY + shots[i].startPos.y * globalScale
+                };
+                DrawCircleV(screenImpactPos, currentRadius * globalScale, currentColor);
+            } else {
+                
+                float progress = shots[i].currentTravelTime / shots[i].travelTime;
+                Vector2 currentPos = Vector2Lerp(shots[i].startPos, shots[i].endPos, progress);
+
+                Vector2 screenCurrentPos = {
+                    offsetX + currentPos.x * globalScale,
+                    offsetY + currentPos.y * globalScale
+                };
+                DrawCircleV(screenCurrentPos, shots[i].radius * globalScale, shots[i].color);
+            }
+        }
+    }
 }
 
 Tower *GetTowerAtMapCoord(int row, int col)
@@ -386,3 +448,41 @@ Tower *GetTowerAtMapCoord(int row, int col)
     }
     return NULL;
 }
+
+Vector2 GetTowerPosition(const Tower *tower) { return tower ? tower->position : (Vector2){0, 0}; }
+TowerType GetTowerType(const Tower *tower) { return tower ? tower->type : TOWER_TYPE_1; }
+int GetTowerDamage(const Tower *tower) { return tower ? tower->damage : 0; }
+float GetTowerRange(const Tower *tower) { return tower ? tower->range : 0.0f; }
+float GetTowerAttackSpeed(const Tower *tower) { return tower ? tower->attackSpeed : 0.0f; }
+float GetTowerAttackCooldown(const Tower *tower) { return tower ? tower->attackCooldown : 0.0f; }
+bool GetTowerActive(const Tower *tower) { return tower ? tower->active : false; }
+
+void SetTowerPosition(Tower *tower, Vector2 position)
+{
+    if (tower) tower->position = position;
+}
+void SetTowerType(Tower *tower, TowerType type)
+{
+    if (tower) tower->type = type;
+}
+void SetTowerDamage(Tower *tower, int damage)
+{
+    if (tower) tower->damage = damage;
+}
+void SetTowerRange(Tower *tower, float range)
+{
+    if (tower) tower->range = range;
+}
+void SetTowerAttackSpeed(Tower *tower, float attackSpeed)
+{
+    if (tower) tower->attackSpeed = attackSpeed;
+}
+void SetTowerAttackCooldown(Tower *tower, float cooldown)
+{
+    if (tower) tower->attackCooldown = cooldown;
+}
+void SetTowerActive(Tower *tower, bool active)
+{
+    if (tower) tower->active = active;
+}
+

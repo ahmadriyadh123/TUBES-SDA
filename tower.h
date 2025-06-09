@@ -14,6 +14,8 @@
 #define ORBIT_BUTTON_DRAW_SCALE 2.0f 
 #define ORBIT_RADIUS_TILE_FACTOR 1.0f
 
+#define MAX_VISUAL_SHOTS 50 
+
 typedef enum {
     TOWER_TYPE_1,
     TOWER_TYPE_2,
@@ -39,6 +41,20 @@ typedef struct Tower{
     bool purchasedUpgrades[UPGRADE_MASS_SLOW + 1]; 
 } Tower;
 
+typedef struct {
+    Vector2 startPos;  
+    Vector2 endPos;    
+    Color color;    
+    float travelTime;  
+    float currentTravelTime; 
+    bool active;       
+    float radius;      
+    bool isImpactEffect;     
+    float impactTimer;       
+    float impactDuration;    
+    float impactMaxSize;
+} Shot;
+
 extern Tower *towersListHead; 
 extern Tower *selectedTowerForDeletion; 
 extern Vector2 towerSelectionUIPos;   
@@ -50,7 +66,14 @@ extern Texture2D deleteButtonTex;
 extern Texture2D upgradeButtonTex; 
 
 void InitTowerAssets();
+void InitShots(void);
 void ShutdownTowerAssets();
+void ShutdownShots(void);
+
+void SpawnShot(Vector2 startPos, Vector2 endPos, Color color, float radius, float travelTime); 
+void SpawnImpactEffect(Vector2 position, Color color, float radius, float duration); 
+void UpdateShots(float deltaTime);
+void DrawShots(float globalScale, float offsetX, float offsetY);
 
 void PlaceTower(int row, int col, TowerType type);
 void UpdateTowerAttacks(EnemyWave *wave, float deltaTime);
