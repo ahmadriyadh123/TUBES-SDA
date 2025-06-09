@@ -139,6 +139,37 @@ GameState GetUpgradeOrbitGameState(UpgradeType type) {
     }
 }
 
+static void UpdateNodeAndChildrenStatus(UpgradeNode *node, const Tower *tower, int purchasedExclusiveGroupId)
+{
+    if (!node)
+        return;
+
+    node->status = UPGRADE_LOCKED;
+
+    if (tower->purchasedUpgrades[node->type])
+    {
+        node->status = UPGRADE_PURCHASED;
+    }
+
+    else if (node->parent && node->parent->cost > 0 && !tower->purchasedUpgrades[node->parent->type])
+    {
+        node->status = UPGRADE_LOCKED;
+    }
+
+    else if (node->exclusiveGroupId != 0 && purchasedExclusiveGroupId == node->exclusiveGroupId)
+    {
+        node->status = UPGRADE_LOCKED_EXCLUDED;
+    }
+}
+
+void UpdateUpgradeTreeStatus(TowerUpgradeTree *tree, const Tower *tower)
+{
+    if (!tree || !tree->root || !tower)
+        return;
+
+    UpdateNodeAndChildrenStatus(tree->root, tower, 0);
+}
+
 void ApplyUpgradeEffect(Tower *tower, UpgradeType type)
 {
     if (!tower)
@@ -198,6 +229,58 @@ void ApplyUpgradeEffect(Tower *tower, UpgradeType type)
     }
     tower->purchasedUpgrades[type] = true;
     TraceLog(LOG_INFO, "Applied upgrade %d to tower at (%d,%d).", type, tower->row, tower->col);
+}
+
+void UpdateUpgradeOrbitMenu(float deltaTime, Vector2 mousePos, float currentTileScale, float mapScreenOffsetX, float mapScreenOffsetY)
+{
+    Vector2 orbitCenter = towerSelectionUIPos;
+    float orbitRadius = TILE_SIZE * currentTileScale * ORBIT_RADIUS_TILE_FACTOR;
+    int numChildren = GetNumChildren(parentNode);
+    int totalButtons = numChildren + (parentNode->parent != NULL ? 1 : 0);
+    bool clickHandledByOrbitMenu = false;
+
+
+    UpgradeNode *parentNode = GetCurrentOrbitParentNode();
+    if (!parentNode)
+    {
+        TraceLog(LOG_ERROR, "UpdateUpgradeOrbitMenuLogic: Parent node is NULL!");
+        HideTowerSelectionUI();
+        return;
+    }
+}
+
+void DrawUpgradeOrbitMenu(float currentTileScale, float mapScreenOffsetX, float mapScreenOffsetY)
+{
+    Rectangle buttonRect = GetOrbitButtonRect(orbitCenter, orbitRadius, i, totalButtons, ORBIT_BUTTON_DRAW_SCALE, upgradeButtonTex);
+
+    if (CheckCollisionPointRec(mousePos, buttonRect))
+    {
+        clickHandledByOrbitMenu = true;
+        if (childNode->cost == 0)
+        {
+            TraceLog(LOG_INFO, "Upgrade category '%s' clicked. Navigating to next level.", childNode->name);
+
+            selectedTowerForDeletion->purchasedUpgrades[childNode->type] = true;
+
+            UpdateUpgradeTreeStatus(&tower1UpgradeTree, selectedTowerForDeletion);
+
+            NavigateUpgradeOrbit(childNode);
+            currentGameState = GetUpgradeOrbitGameState(GetCurrentOrbitParentNode()->type);
+            return;
+        }
+    }
+
+        Texture2D upgradeIcon = GetUpgradeIconTexture(childNode->type);
+        if (upgradeIcon.id != 0)
+        {
+            float iconDrawSize = buttonRect.width * 1.0f;
+            Rectangle iconDestRect = {
+                buttonRect.x + (buttonRect.width - iconDrawSize) / 2.0f,
+                buttonRect.y + (buttonRect.height - iconDrawSize) / 2.0f,
+                iconDrawSize,
+                iconDrawSize};
+            DrawTexturePro(upgradeIcon, (Rectangle){0, 0, (float)upgradeIcon.width, (float)upgradeIcon.height}, iconDestRect, (Vector2){0, 0}, 0.0f, WHITE);
+        }
 }
 
 static void FreeUpgradeNode(UpgradeNode* node) {
