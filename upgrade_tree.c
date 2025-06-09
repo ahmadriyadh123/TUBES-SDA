@@ -143,22 +143,38 @@ static void UpdateNodeAndChildrenStatus(UpgradeNode *node, const Tower *tower, i
 {
     if (!node)
         return;
-
     node->status = UPGRADE_LOCKED;
-
     if (tower->purchasedUpgrades[node->type])
     {
         node->status = UPGRADE_PURCHASED;
     }
-
     else if (node->parent && node->parent->cost > 0 && !tower->purchasedUpgrades[node->parent->type])
     {
         node->status = UPGRADE_LOCKED;
     }
-
     else if (node->exclusiveGroupId != 0 && purchasedExclusiveGroupId == node->exclusiveGroupId)
     {
         node->status = UPGRADE_LOCKED_EXCLUDED;
+    }
+    else
+    {
+        if (node->parent && node->parent->cost == 0 && tower->purchasedUpgrades[node->parent->type])
+        {
+            node->status = UPGRADE_UNLOCKED;
+        }
+        else
+        {
+            node->status = UPGRADE_UNLOCKED;
+        }
+    }
+    int nextPurchasedExclusiveGroupId = purchasedExclusiveGroupId;
+    if (node->status == UPGRADE_PURCHASED && node->exclusiveGroupId != 0)
+    {
+        nextPurchasedExclusiveGroupId = node->exclusiveGroupId;
+    }
+    for (int i = 0; i < node->numChildren; i++)
+    {
+        UpdateNodeAndChildrenStatus(node->children[i], tower, nextPurchasedExclusiveGroupId);
     }
 }
 
@@ -239,7 +255,6 @@ void UpdateUpgradeOrbitMenu(float deltaTime, Vector2 mousePos, float currentTile
     int totalButtons = numChildren + (parentNode->parent != NULL ? 1 : 0);
     bool clickHandledByOrbitMenu = false;
 
-
     UpgradeNode *parentNode = GetCurrentOrbitParentNode();
     if (!parentNode)
     {
@@ -248,21 +263,86 @@ void UpdateUpgradeOrbitMenu(float deltaTime, Vector2 mousePos, float currentTile
         return;
     }
 
-    if (CheckCollisionPointRec(mousePos, buttonRect))
+    if (parentNode->parent != NULL)
     {
-        clickHandledByOrbitMenu = true;
-
-        if (childNode->cost == 0)
+        Rectangle backButtonRect = GetOrbitButtonRect(orbitCenter, orbitRadius, numChildren, totalButtons, ORBIT_BUTTON_DRAW_SCALE, deleteButtonTex);
+        if (CheckCollisionPointRec(mousePos, backButtonRect))
         {
-            TraceLog(LOG_INFO, "Upgrade category '%s' clicked. Navigating to next level.", childNode->name);
-
-            selectedTowerForDeletion->purchasedUpgrades[childNode->type] = true;
-
-            UpdateUpgradeTreeStatus(&tower1UpgradeTree, selectedTowerForDeletion);
-
-            NavigateUpgradeOrbit(childNode);
+            NavigateUpgradeOrbitBack();
             currentGameState = GetUpgradeOrbitGameState(GetCurrentOrbitParentNode()->type);
+            clickHandledByOrbitMenu = true;
+            TraceLog(LOG_INFO, "Upgrade orbit: Back button clicked. Returning to %s.", GetCurrentOrbitParentNode()->name);
             return;
+        }
+    }
+
+    for (int i = 0; i < numChildren; i++)
+    {
+        UpgradeNode *childNode = GetNthChild(parentNode, i);
+        if (!childNode)
+            continue;
+
+        Rectangle buttonRect = GetOrbitButtonRect(orbitCenter, orbitRadius, i, totalButtons, ORBIT_BUTTON_DRAW_SCALE, upgradeButtonTex);
+
+        if (CheckCollisionPointRec(mousePos, buttonRect))
+        {
+            clickHandledByOrbitMenu = true;
+            if (childNode->cost == 0)
+            {
+                TraceLog(LOG_INFO, "Upgrade category '%s' clicked. Navigating to next level.", childNode->name);
+
+                selectedTowerForDeletion->purchasedUpgrades[childNode->type] = true;
+
+                UpdateUpgradeTreeStatus(&tower1UpgradeTree, selectedTowerForDeletion);
+
+                NavigateUpgradeOrbit(childNode);
+                currentGameState = GetUpgradeOrbitGameState(GetCurrentOrbitParentNode()->type);
+                return;
+            }
+            else
+            {
+                if (childNode->status == UPGRADE_UNLOCKED)
+                {
+                    if (GetMoney() >= childNode->cost)
+                    {
+                        ShowUpgradeAgreementPanel(childNode);
+
+                        return;
+                    }
+                    else
+                    {
+                        TraceLog(LOG_WARNING, "Not enough money to buy '%s'. Cost: $%d, Have: $%d", childNode->name, childNode->cost, GetMoney());
+                        return;
+                    }
+                }
+                else if (childNode->status == UPGRADE_PURCHASED)
+                {
+                    TraceLog(LOG_INFO, "Upgrade '%s' already purchased. Moving to next level (if available).", childNode->name);
+
+                    UpdateUpgradeTreeStatus(&tower1UpgradeTree, selectedTowerForDeletion);
+                    if (GetNumChildren(childNode) > 0)
+                    {
+                        NavigateUpgradeOrbit(childNode);
+                        currentGameState = GetUpgradeOrbitGameState(GetCurrentOrbitParentNode()->type);
+                    }
+                    else
+                    {
+                        currentGameState = GAMEPLAY;
+                        HideTowerSelectionUI();
+                    }
+                    return;
+                }
+                else if (childNode->status == UPGRADE_LOCKED)
+                {
+                    TraceLog(LOG_WARNING, "Upgrade '%s' is locked. Purchase its parent first.", childNode->name);
+                    return;
+                }
+                else if (childNode->status == UPGRADE_LOCKED_EXCLUDED)
+                {
+                    TraceLog(LOG_WARNING, "Upgrade '%s' is excluded because another option in its branch was chosen.", childNode->name);
+                    return;
+                }
+            }
         }
     }
 }
@@ -361,6 +441,64 @@ void DrawUpgradeOrbitMenu(float currentTileScale, float mapScreenOffsetX, float 
 
         return;
     }
+}
+
+void ShowUpgradeAgreementPanel(UpgradeNode *node)
+{
+    selectedUpgradeNodeForAgreement = node;
+    isUpgradeAgreementPanelVisible = true;
+    currentGameState = GAMEPLAY_TOWER_UPGRADE_AGREEMENT;
+    TraceLog(LOG_INFO, "Upgrade Agreement: Panel shown for '%s'.", node->name);
+}
+
+void HideUpgradeAgreementPanel(void)
+{
+    selectedUpgradeNodeForAgreement = NULL;
+    isUpgradeAgreementPanelVisible = false;
+    TraceLog(LOG_INFO, "Upgrade Agreement: Panel hidden.");
+}
+
+void ProcessUpgradeAgreement(bool confirmed)
+{
+    if (confirmed && selectedUpgradeNodeForAgreement != NULL && selectedTowerForDeletion != NULL)
+    {
+        UpgradeNode *node = selectedUpgradeNodeForAgreement;
+        if (node->status == UPGRADE_UNLOCKED && GetMoney() >= node->cost)
+        {
+            ApplyUpgradeEffect(selectedTowerForDeletion, node->type);
+            AddMoney(-node->cost);
+            selectedTowerForDeletion->purchasedUpgrades[node->type] = true;
+
+            TraceLog(LOG_INFO, "Confirmed purchase of '%s' for $%d. Money: $%d", node->name, node->cost, GetMoney());
+
+            UpdateUpgradeTreeStatus(&tower1UpgradeTree, selectedTowerForDeletion);
+
+            if (GetNumChildren(node) > 0)
+            {
+                NavigateUpgradeOrbit(node);
+                currentGameState = GetUpgradeOrbitGameState(GetCurrentOrbitParentNode()->type);
+            }
+            else
+            {
+
+                currentGameState = GAMEPLAY;
+                HideTowerSelectionUI();
+            }
+        }
+        else
+        {
+            TraceLog(LOG_WARNING, "Upgrade Agreement: Purchase failed. Node status: %d, Money: %d, Cost: %d", node->status, GetMoney(), node->cost);
+
+            currentGameState = GetUpgradeOrbitGameState(GetCurrentOrbitParentNode()->type);
+        }
+    }
+    else
+    {
+        TraceLog(LOG_INFO, "Upgrade Agreement: Purchase cancelled.");
+
+        currentGameState = GetUpgradeOrbitGameState(GetCurrentOrbitParentNode()->type);
+    }
+    HideUpgradeAgreementPanel();
 }
 
 static void FreeUpgradeNode(UpgradeNode* node) {
