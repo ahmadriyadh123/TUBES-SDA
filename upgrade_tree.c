@@ -329,6 +329,38 @@ void DrawUpgradeOrbitMenu(float currentTileScale, float mapScreenOffsetX, float 
             DrawTexturePro(iconStatusToDraw, (Rectangle){0, 0, (float)iconStatusToDraw.width, (float)iconStatusToDraw.height}, statusIconDestRect, (Vector2){0, 0}, 0.0f, WHITE);
         }
     }
+    DrawTowers(currentTileScale, mapScreenOffsetX, mapScreenOffsetY);
+
+    if (isUpgradeAgreementPanelVisible && selectedUpgradeNodeForAgreement != NULL)
+    {
+        float panelWidth = GetScreenWidth() * 0.2f;
+        float panelHeight = GetScreenHeight() * 0.2f;
+        float panelX = (GetScreenWidth() - panelWidth) / 2.0f;
+        float panelY = (GetScreenHeight() - panelHeight) / 2.0f;
+
+        DrawRectangleRec((Rectangle){panelX, panelY, panelWidth, panelHeight}, Fade(GRAY, 0.9f));
+        DrawRectangleLinesEx((Rectangle){panelX, panelY, panelWidth, panelHeight}, 3, RAYWHITE);
+
+        const char *confirmText = TextFormat("Confirm purchase of '%s' for $%d?", selectedUpgradeNodeForAgreement->name, selectedUpgradeNodeForAgreement->cost);
+        Vector2 confirmTextSize = MeasureTextEx(GetFontDefault(), confirmText, 25, 1);
+        DrawText(confirmText, (int)(panelX + panelWidth / 2 - confirmTextSize.x / 2), (int)(panelY + 30), 25, RAYWHITE);
+
+        Vector2 descTextSize = MeasureTextEx(GetFontDefault(), selectedUpgradeNodeForAgreement->description, 18, 1);
+        DrawText(selectedUpgradeNodeForAgreement->description, (int)(panelX + panelWidth / 2 - descTextSize.x / 2), (int)(panelY + 70), 18, LIGHTGRAY);
+
+        float buttonWidth = panelWidth * 0.3f;
+        float buttonHeight = 40.0f;
+        float buttonSpacing = 20.0f;
+        Rectangle okButtonRect = {panelX + panelWidth / 2 - buttonWidth - buttonSpacing / 2, panelY + panelHeight - buttonHeight - 20, buttonWidth, buttonHeight};
+        Rectangle cancelButtonRect = {panelX + panelWidth / 2 + buttonSpacing / 2, panelY + panelHeight - buttonHeight - 20, buttonWidth, buttonHeight};
+
+        DrawRectangleRec(okButtonRect, GREEN);
+        DrawText("OK", (int)(okButtonRect.x + okButtonRect.width / 2 - MeasureText("OK", 20) / 2), (int)(okButtonRect.y + 10), 20, WHITE);
+        DrawRectangleRec(cancelButtonRect, RED);
+        DrawText("Cancel", (int)(cancelButtonRect.x + cancelButtonRect.width / 2 - MeasureText("Cancel", 20) / 2), (int)(cancelButtonRect.y + 10), 20, WHITE);
+
+        return;
+    }
 }
 
 static void FreeUpgradeNode(UpgradeNode* node) {
