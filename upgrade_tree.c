@@ -121,3 +121,36 @@ void FreeUpgradeTree(TowerUpgradeTree* tree) {
         TraceLog(LOG_INFO, "Upgrade tree freed.");
     }
 }
+
+UpgradeNode* GetUpgradeTreeRoot(TowerUpgradeTree* tree) {
+    return tree ? tree->root : NULL;
+}
+
+UpgradeNode* GetNthChild(UpgradeNode* parent, int n) {
+    if (!parent || n < 0 || n >= parent->numChildren) {
+        return NULL;
+    }
+    return parent->children[n];
+}
+
+int GetNumChildren(UpgradeNode* node) {
+    return node ? node->numChildren : 0;
+}
+
+
+void SetCurrentOrbitParentNode(UpgradeNode* node) {
+    currentOrbitParentNode = node;
+}
+
+UpgradeNode* GetCurrentOrbitParentNode(void) {
+    return currentOrbitParentNode;
+}
+
+
+void SetPrevOrbitParentNode(UpgradeNode* node) {
+    prevOrbitParentNode = node;
+}
+
+UpgradeNode* GetPrevOrbitParentNode(void) {
+    return prevOrbitParentNode;
+}
