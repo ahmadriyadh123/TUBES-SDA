@@ -66,3 +66,58 @@ UpgradeNode* CreateUpgradeNode(UpgradeType type, const char* name, const char* d
     node->status = UPGRADE_LOCKED; 
     return node;
 }
+
+Texture2D GetUpgradeIconTexture(UpgradeType type) {
+    switch (type) {
+        case UPGRADE_ATTACK_SPEED_BASE: return upgradeIcon_AttackSpeedBase;
+        case UPGRADE_ATTACK_POWER_BASE: return upgradeIcon_AttackPowerBase;
+        case UPGRADE_SPECIAL_EFFECT_BASE: return upgradeIcon_SpecialEffectBase;
+        case UPGRADE_LIGHTNING_ATTACK: return upgradeIcon_LightningAttack;
+        case UPGRADE_CHAIN_ATTACK: return upgradeIcon_ChainAttack;
+        case UPGRADE_AREA_ATTACK: return upgradeIcon_AreaAttack;
+        case UPGRADE_CRITICAL_ATTACK: return upgradeIcon_CriticalAttack;
+        case UPGRADE_STUN_EFFECT: return upgradeIcon_StunEffect;
+        case UPGRADE_WIDE_CHAIN_RANGE: return upgradeIcon_WideChainRange;
+        case UPGRADE_LARGE_AOE_RADIUS: return upgradeIcon_LargeAoERadius;
+        case UPGRADE_HIGH_CRIT_CHANCE: return upgradeIcon_HighCritChance;
+        case UPGRADE_LETHAL_POISON: return upgradeIcon_LethalPoison;
+        case UPGRADE_MASS_SLOW: return upgradeIcon_MassSlow;
+        default: return (Texture2D){0}; 
+    }
+}
+
+// Fungsi helper untuk menentukan GameState berdasarkan UpgradeType dari node
+GameState GetUpgradeOrbitGameState(UpgradeType type) {
+    switch (type) {
+        case UPGRADE_NONE:
+            return GAMEPLAY_TOWER_SELECTED_ORBIT_L1; // Root (Upgrade Tower) -> Level 1
+        case UPGRADE_ATTACK_SPEED_BASE:
+        case UPGRADE_ATTACK_POWER_BASE:
+        case UPGRADE_SPECIAL_EFFECT_BASE:
+            return GAMEPLAY_TOWER_SELECTED_ORBIT_L2; // Dari L1 ke L2
+        case UPGRADE_LIGHTNING_ATTACK:
+        case UPGRADE_CHAIN_ATTACK:
+        case UPGRADE_AREA_ATTACK:
+        case UPGRADE_CRITICAL_ATTACK:
+        case UPGRADE_LETHAL_POISON:
+        case UPGRADE_MASS_SLOW:
+            return GAMEPLAY_TOWER_SELECTED_ORBIT_L3; // Dari L2 ke L3
+        default:
+            return GAMEPLAY; // Jika tidak ada level lebih dalam, kembali ke gameplay
+    }
+}
+static void FreeUpgradeNode(UpgradeNode* node) {
+    if (!node) return;
+    for (int i = 0; i < node->numChildren; i++) {
+        FreeUpgradeNode(node->children[i]);
+    }
+    free(node);
+}
+
+void FreeUpgradeTree(TowerUpgradeTree* tree) {
+    if (tree && tree->root) {
+        FreeUpgradeNode(tree->root);
+        tree->root = NULL;
+        TraceLog(LOG_INFO, "Upgrade tree freed.");
+    }
+}
