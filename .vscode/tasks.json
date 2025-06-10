@@ -69,25 +69,26 @@
       "args": [
         "-fdiagnostics-color=always",
         "-g",
-        // "-gdwarf-4",
-        "${fileDirname}/*.c",
+        
+        "src/*.c",
         "-o",
-        "${fileDirname}/TUBES-SDA.exe",
-        // "${fileDirname}\\${fileBasenameNoExtension}.exe",
-        "-I", "C:/raylib/raylib/src",      // <--- TAMBAHKAN INI (Include path)
-        "-L", "C:/raylib/raylib/src",      // <--- TAMBAHKAN INI (Library path)
-        "-lraylib",                        // <--- TAMBAHKAN INI (Link raylib)
-        "-lopengl32",                      // <--- TAMBAHKAN INI
-        "-lgdi32",                         // <--- TAMBAHKAN INI
+        "${workspaceFolder}/game.exe",
+        "-I", "${workspaceFolder}/headers",
+        
+        "-I", "C:/raylib/raylib/src",      
+        "-L", "C:/raylib/raylib/src",      
+        "-lraylib",                        
+        "-lopengl32",                      
+        "-lgdi32",                         
         "-lwinmm",
         "-pthread",
         "-mwindows"
       ],
       "options": {
-        "cwd": "${fileDirname}",
+        "cwd": "${workspaceFolder}",
         "env": {
-          // Baris ini akan menambahkan C:\raylib\w64devkit\bin ke awal PATH
-          // yang digunakan oleh task ini. Gunakan double backslash untuk Windows.
+          
+          
           "PATH": "C:\\raylib\\w64devkit\\bin;${env:PATH}"
         }
       },

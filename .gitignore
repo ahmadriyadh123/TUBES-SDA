@@ -3,6 +3,3 @@
 *.layout
 *.exe
 *.o
-Makefile.win
-main.code-workspace
-resources/

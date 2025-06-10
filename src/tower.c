@@ -2,33 +2,49 @@
 #include "tower.h"
 #include "utils.h"
 #include "map.h"
-#include "economy.h"
-#include <stddef.h>
-#include <stdlib.h>
 #include "raymath.h"
 #include "enemy.h"
+#include "upgrade_tree.h"
+#include "player_resources.h"
+#include <stddef.h>
+#include <stdlib.h>
+#include <math.h>
 
 Tower *towersListHead = NULL;
 Tower *selectedTowerForDeletion = NULL;
-static Texture2D towerTexture = {0};
-static int towerCount = 0;
-
+Vector2 deleteButtonScreenPos = {0, 0};
+Vector2 towerSelectionUIPos = {0, 0}; 
+bool isTowerSelectionUIVisible = false;
 bool deleteButtonVisible = false;
 Texture2D deleteButtonTex = {0};
-Vector2 deleteButtonScreenPos = {0, 0};
-float DELETE_BUTTON_DRAW_SCALE = 1.0f;
+Texture2D upgradeButtonTex = {0};
+float DELETE_BUTTON_DRAW_SCALE = ORBIT_BUTTON_DRAW_SCALE; 
+float UPGRADE_BUTTON_DRAW_SCALE = ORBIT_BUTTON_DRAW_SCALE;
 
-void InitTowerAssets(void)
+static Texture2D towerTexture = {0};
+static Shot shots[MAX_VISUAL_SHOTS]; 
+
+void InitShots(void) {
+    for (int i = 0; i < MAX_VISUAL_SHOTS; i++) {
+        shots[i].active = false;
+    }
+    TraceLog(LOG_INFO, "SHOTS: Visual shot system initialized.");
+}
+
+void InitTowerAssets()
 {
     towerTexture = LoadTextureSafe("assets/tower1.png");
-    deleteButtonTex = LoadTextureSafe("assets/delete.png");
+    deleteButtonTex = LoadTextureSafe("assets/delete_button.png");
+    upgradeButtonTex = LoadTextureSafe("assets/upgrade_button.png");
     TraceLog(LOG_INFO, "Tower assets initialized.");
 }
 
-void ShutdownTowerAssets(void)
+void ShutdownTowerAssets()
 {
     UnloadTextureSafe(&towerTexture);
     UnloadTextureSafe(&deleteButtonTex);
+    UnloadTextureSafe(&upgradeButtonTex);
+
     Tower *current = towersListHead;
     while (current != NULL)
     {
@@ -37,15 +53,82 @@ void ShutdownTowerAssets(void)
         current = next;
     }
     towersListHead = NULL;
-    HideDeleteButton();
+    HideTowerOrbitUI();
     TraceLog(LOG_INFO, "Tower assets shutdown.");
+}   
+void ShutdownShots(void) {
+    TraceLog(LOG_INFO, "SHOTS: Visual shot system shutdown.");
 }
 
-void HideDeleteButton()
+void ShowTowerOrbitUI(Tower *tower, float currentTileScale, float mapScreenOffsetX, float mapScreenOffsetY)
+{
+    selectedTowerForDeletion = tower; 
+
+    
+    Vector2 towerCenterPos = {
+        mapScreenOffsetX + (tower->position.x * currentTileScale),
+        mapScreenOffsetY + (tower->position.y * currentTileScale)};
+    towerSelectionUIPos = towerCenterPos;
+    isTowerSelectionUIVisible = true;
+    deleteButtonVisible = true; 
+
+    ResetUpgradeOrbit(); 
+
+    TraceLog(LOG_INFO, "Displaying tower orbit UI for tower at (%d, %d).", tower->row, tower->col);
+}
+
+void HideTowerOrbitUI(void)
 {
     selectedTowerForDeletion = NULL;
+    isTowerSelectionUIVisible = false;
+    deleteButtonVisible = false; 
+    ResetUpgradeOrbit(); 
+    TraceLog(LOG_INFO, "Tower orbit UI hidden.");
+}
+bool IsTowerOrbitUIVisible(void)
+{
+    return isTowerSelectionUIVisible;
+}
+
+void HideTowerSelectionUI(void) { 
+    selectedTowerForDeletion = NULL;
     deleteButtonVisible = false;
-    TraceLog(LOG_INFO, "UI elements for tower deletion cleared.");
+    isTowerSelectionUIVisible = false; 
+    TraceLog(LOG_INFO, "Tower selection UI hidden.");
+}
+
+bool IsTowerSelectionUIVisible(void) {
+    return deleteButtonVisible;
+}
+
+Rectangle GetOrbitButtonRect(Vector2 orbitCenter, float orbitRadius, int buttonIndex, int totalButtons, float buttonScale, Texture2D buttonTexture) {
+    
+    
+    
+    float angleStep = 360.0f / totalButtons;
+    float currentAngle = (float)buttonIndex * angleStep - 45.0f; 
+
+    Vector2 buttonPosInOrbit = {
+        orbitCenter.x + orbitRadius * cosf(DEG2RAD * currentAngle),
+        orbitCenter.y + orbitRadius * sinf(DEG2RAD * currentAngle)
+    };
+
+    float visualButtonSize = 57.0f; 
+    float btnDrawSize = visualButtonSize * buttonScale; 
+
+    
+
+    return (Rectangle){
+        buttonPosInOrbit.x - btnDrawSize / 2.0f,
+        buttonPosInOrbit.y - btnDrawSize / 2.0f,
+        btnDrawSize,
+        btnDrawSize
+    };
+}
+
+bool CheckOrbitButtonClick(Vector2 mousePos, Vector2 orbitCenter, float orbitRadius, int buttonIndex, int totalButtons, float buttonScale, Texture2D buttonTexture) {
+    Rectangle rect = GetOrbitButtonRect(orbitCenter, orbitRadius, buttonIndex, totalButtons, buttonScale, buttonTexture);
+    return CheckCollisionPointRec(mousePos, rect);
 }
 
 void PlaceTower(int row, int col, TowerType type)
@@ -77,9 +160,9 @@ void PlaceTower(int row, int col, TowerType type)
     *newTower = (Tower){0};
     SetTowerPosition(newTower, (Vector2){col * TILE_SIZE + TILE_SIZE / 2.0f, row * TILE_SIZE + TILE_SIZE / 2.0f});
     SetTowerType(newTower, type);
-    SetTowerDamage(newTower, 100);
+    SetTowerDamage(newTower, 30);
     SetTowerRange(newTower, 100.0f);
-    SetTowerAttackSpeed(newTower, 1.0f);
+    SetTowerAttackSpeed(newTower, 0.8f);
     SetTowerAttackCooldown(newTower, 0.0f);
     SetTowerActive(newTower, true);
     newTower->texture = towerTexture;
@@ -97,7 +180,7 @@ void PlaceTower(int row, int col, TowerType type)
     AddMoney(-50);
     SetMapTile(row, col, 7);
     TraceLog(LOG_INFO, "Tower placed at (%d, %d). Money: $%d.", row, col, GetMoney());
-    HideDeleteButton();
+    HideTowerOrbitUI();
 }
 
 void RemoveTower(Tower *towerToRemove)
@@ -133,7 +216,7 @@ void RemoveTower(Tower *towerToRemove)
 
     free(current);
     TraceLog(LOG_INFO, "Tower removed from map at (%d, %d).", towerToRemove->row, towerToRemove->col);
-    HideDeleteButton();
+    HideTowerOrbitUI();
 }
 
 void SellTower(Tower *towerToSell)
@@ -192,10 +275,11 @@ void UpdateTowerAttacks(EnemyWave *wave, float deltaTime)
             {
                 int damage = GetTowerDamage(current);
                 SetEnemyHP(enemy, GetEnemyHP(enemy) - damage);
+                SpawnShot(GetTowerPosition(current), enemyPos, RAYWHITE, 3.0f, 0.05f); 
                 SetTowerAttackCooldown(current, GetTowerAttackSpeed(current));
                 if (GetEnemyHP(enemy) <= 0)
                 {
-                    SetEnemyActive(enemy, false);
+                    SetEnemyActive(enemy, false);   
                     SetWaveActiveCount(wave, GetWaveActiveCount(wave) - 1);
                     AddMoney(10 + (wave->waveNum * 2));
                 }
@@ -208,6 +292,20 @@ void UpdateTowerAttacks(EnemyWave *wave, float deltaTime)
 
 void DrawTowers(float globalScale, float offsetX, float offsetY)
 {
+    if (currentGameState == GAMEPLAY && IsTowerOrbitUIVisible() && selectedTowerForDeletion != NULL) { 
+        Vector2 orbitCenter = towerSelectionUIPos;
+        float orbitRadius = TILE_SIZE * globalScale * ORBIT_RADIUS_TILE_FACTOR;
+        
+        DrawCircleLines((int)orbitCenter.x, (int)orbitCenter.y, orbitRadius, RAYWHITE);
+        
+        
+        Rectangle deleteBtnRect = GetOrbitButtonRect(orbitCenter, orbitRadius, 0, 2, ORBIT_BUTTON_DRAW_SCALE, deleteButtonTex);
+        DrawTexturePro(deleteButtonTex, (Rectangle){0,0,(float)deleteButtonTex.width,(float)deleteButtonTex.height}, deleteBtnRect, (Vector2){0,0}, 0.0f, WHITE);
+        
+        
+        Rectangle upgradeBtnRect = GetOrbitButtonRect(orbitCenter, orbitRadius, 1, 2, ORBIT_BUTTON_DRAW_SCALE, upgradeButtonTex);
+        DrawTexturePro(upgradeButtonTex, (Rectangle){0,0,(float)upgradeButtonTex.width,(float)upgradeButtonTex.height}, upgradeBtnRect, (Vector2){0,0}, 0.0f, WHITE);
+    }
     Tower *current = towersListHead;
     while (current != NULL)
     {
@@ -241,64 +339,100 @@ void DrawTowers(float globalScale, float offsetX, float offsetY)
 
         current = (Tower *)current->next;
     }
+}
 
-    if (deleteButtonVisible && selectedTowerForDeletion != NULL)
-    {
-        float buttonDrawWidth = deleteButtonTex.width * DELETE_BUTTON_DRAW_SCALE;
-        float buttonDrawHeight = deleteButtonTex.height * DELETE_BUTTON_DRAW_SCALE;
+void SpawnShot(Vector2 startPos, Vector2 endPos, Color color, float radius, float travelTime) { 
+    for (int i = 0; i < MAX_VISUAL_SHOTS; i++) {
+        if (!shots[i].active) {
+            shots[i].startPos = startPos;
+            shots[i].endPos = endPos;
+            shots[i].travelTime = fmax(travelTime, 0.01f);
+            shots[i].currentTravelTime = 0.0f;
+            shots[i].color = color;
+            shots[i].radius = radius;
+            shots[i].active = true;
+            shots[i].isImpactEffect = false; 
+            shots[i].impactTimer = 0.0f;
+            shots[i].impactDuration = 0.0f;
+            shots[i].impactMaxSize = 0.0f;
+            return;
+        }
+    }
+    TraceLog(LOG_WARNING, "SHOTS: Max visual shots reached, cannot spawn new moving shot.");
+}
 
-        Rectangle destination = {
-            deleteButtonScreenPos.x - buttonDrawWidth / 2.0f,
-            deleteButtonScreenPos.y - buttonDrawHeight / 2.0f,
-            buttonDrawWidth,
-            buttonDrawHeight};
-        DrawTexturePro(deleteButtonTex, (Rectangle){0, 0, (float)deleteButtonTex.width, (float)deleteButtonTex.height}, destination, (Vector2){0, 0}, 0.0f, WHITE);
+
+void SpawnImpactEffect(Vector2 position, Color color, float radius, float duration) {
+    for (int i = 0; i < MAX_VISUAL_SHOTS; i++) {
+        if (!shots[i].active) {
+            shots[i].startPos = position; 
+            shots[i].endPos = position;   
+            shots[i].travelTime = 0.0f;     
+            shots[i].currentTravelTime = 0.0f;
+            shots[i].color = color;
+            shots[i].radius = radius;
+            shots[i].active = true;
+            shots[i].isImpactEffect = true; 
+            shots[i].impactTimer = 0.0f;
+            shots[i].impactDuration = fmax(duration, 0.01f); 
+            shots[i].impactMaxSize = radius * 2.0f; 
+            return;
+        }
+    }
+    TraceLog(LOG_WARNING, "SHOTS: Max visual shots reached, cannot spawn new impact effect.");
+}
+
+void UpdateShots(float deltaTime) {
+    for (int i = 0; i < MAX_VISUAL_SHOTS; i++) {
+        if (shots[i].active) {
+            if (shots[i].isImpactEffect) {
+                
+                shots[i].impactTimer += deltaTime;
+                if (shots[i].impactTimer >= shots[i].impactDuration) {
+                    shots[i].active = false; 
+                }
+            } else {
+                
+                shots[i].currentTravelTime += deltaTime;
+                if (shots[i].currentTravelTime >= shots[i].travelTime) {
+                    shots[i].active = false; 
+                    
+                    
+                    SpawnImpactEffect(shots[i].endPos, shots[i].color, shots[i].radius, 0.1f); 
+                    
+                }
+            }
+        }
     }
 }
 
-Vector2 GetTowerPosition(const Tower *tower) { return tower ? tower->position : (Vector2){0, 0}; }
-TowerType GetTowerType(const Tower *tower) { return tower ? tower->type : TOWER_TYPE_1; }
-int GetTowerDamage(const Tower *tower) { return tower ? tower->damage : 0; }
-float GetTowerRange(const Tower *tower) { return tower ? tower->range : 0.0f; }
-float GetTowerAttackSpeed(const Tower *tower) { return tower ? tower->attackSpeed : 0.0f; }
-float GetTowerAttackCooldown(const Tower *tower) { return tower ? tower->attackCooldown : 0.0f; }
-bool GetTowerActive(const Tower *tower) { return tower ? tower->active : false; }
-int GetTowerCount(void) { return towerCount; }
+void DrawShots(float globalScale, float offsetX, float offsetY) {
+    for (int i = 0; i < MAX_VISUAL_SHOTS; i++) {
+        if (shots[i].active) {
+            if (shots[i].isImpactEffect) {
+                
+                float impactProgress = shots[i].impactTimer / shots[i].impactDuration; 
+                float currentRadius = shots[i].radius * (1.0f + impactProgress * (shots[i].impactMaxSize / shots[i].radius - 1.0f));
+                Color currentColor = Fade(shots[i].color, 1.0f - impactProgress); 
 
-void SetTowerPosition(Tower *tower, Vector2 position)
-{
-    if (tower)
-        tower->position = position;
-}
-void SetTowerType(Tower *tower, TowerType type)
-{
-    if (tower)
-        tower->type = type;
-}
-void SetTowerDamage(Tower *tower, int damage)
-{
-    if (tower)
-        tower->damage = damage;
-}
-void SetTowerRange(Tower *tower, float range)
-{
-    if (tower)
-        tower->range = range;
-}
-void SetTowerAttackSpeed(Tower *tower, float attackSpeed)
-{
-    if (tower)
-        tower->attackSpeed = attackSpeed;
-}
-void SetTowerAttackCooldown(Tower *tower, float cooldown)
-{
-    if (tower)
-        tower->attackCooldown = cooldown;
-}
-void SetTowerActive(Tower *tower, bool active)
-{
-    if (tower)
-        tower->active = active;
+                Vector2 screenImpactPos = {
+                    offsetX + shots[i].startPos.x * globalScale,
+                    offsetY + shots[i].startPos.y * globalScale
+                };
+                DrawCircleV(screenImpactPos, currentRadius * globalScale, currentColor);
+            } else {
+                
+                float progress = shots[i].currentTravelTime / shots[i].travelTime;
+                Vector2 currentPos = Vector2Lerp(shots[i].startPos, shots[i].endPos, progress);
+
+                Vector2 screenCurrentPos = {
+                    offsetX + currentPos.x * globalScale,
+                    offsetY + currentPos.y * globalScale
+                };
+                DrawCircleV(screenCurrentPos, shots[i].radius * globalScale, shots[i].color);
+            }
+        }
+    }
 }
 
 Tower *GetTowerAtMapCoord(int row, int col)
@@ -314,3 +448,41 @@ Tower *GetTowerAtMapCoord(int row, int col)
     }
     return NULL;
 }
+
+Vector2 GetTowerPosition(const Tower *tower) { return tower ? tower->position : (Vector2){0, 0}; }
+TowerType GetTowerType(const Tower *tower) { return tower ? tower->type : TOWER_TYPE_1; }
+int GetTowerDamage(const Tower *tower) { return tower ? tower->damage : 0; }
+float GetTowerRange(const Tower *tower) { return tower ? tower->range : 0.0f; }
+float GetTowerAttackSpeed(const Tower *tower) { return tower ? tower->attackSpeed : 0.0f; }
+float GetTowerAttackCooldown(const Tower *tower) { return tower ? tower->attackCooldown : 0.0f; }
+bool GetTowerActive(const Tower *tower) { return tower ? tower->active : false; }
+
+void SetTowerPosition(Tower *tower, Vector2 position)
+{
+    if (tower) tower->position = position;
+}
+void SetTowerType(Tower *tower, TowerType type)
+{
+    if (tower) tower->type = type;
+}
+void SetTowerDamage(Tower *tower, int damage)
+{
+    if (tower) tower->damage = damage;
+}
+void SetTowerRange(Tower *tower, float range)
+{
+    if (tower) tower->range = range;
+}
+void SetTowerAttackSpeed(Tower *tower, float attackSpeed)
+{
+    if (tower) tower->attackSpeed = attackSpeed;
+}
+void SetTowerAttackCooldown(Tower *tower, float cooldown)
+{
+    if (tower) tower->attackCooldown = cooldown;
+}
+void SetTowerActive(Tower *tower, bool active)
+{
+    if (tower) tower->active = active;
+}
+
