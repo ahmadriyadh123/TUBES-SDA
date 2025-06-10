@@ -1,14 +1,13 @@
 #include <raylib.h>
 #include <raymath.h>
+#include "enemy.h"
+#include "utils.h"
+#include "map.h"
+#include "player_resources.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-
-#define TIMER_OVERALL_SIZE_FACTOR 0.8f
-#define TIMER_IMAGE_DISPLAY_FACTOR 0.8f
-
-static EnemyTypeProperties enemy_properties[2]; // Index 0 untuk enemy1, Index 1 untuk enemy2
 
 static AnimSprite enemy1_anim_data = {0};
 static AnimSprite enemy2_anim_data = {0};
@@ -16,26 +15,48 @@ static AnimSprite enemy2_anim_data = {0};
 static int dx_path[] = {0, 1, 0, -1};
 static int dy_path[] = {-1, 0, 1, 0};
 
-EnemyWave currentWave = {0};
+EnemyWave *currentWave = NULL;
 
-AnimSprite LoadAnimSprite(const char *filename, int cols, int rows, int rowIndex, int speed, int frameCount)
-{
+AnimSprite LoadAnimSprite(const char *filename, int cols, int speed, int frameCount) {
     AnimSprite sprite = {0};
     sprite.texture = LoadTextureSafe(filename);
-    if (sprite.texture.id == 0)
-    {
-        TraceLog(LOG_ERROR, "ERROR: LoadAnimSprite failed for: %s", filename);
+    if (sprite.texture.id == 0) {
+        TraceLog(LOG_ERROR, "ERROR: LoadAnimSprite failed to load texture: %s", filename);
+        sprite.frameWidth = 0;
+        sprite.frameHeight = 0;
+        sprite.frameCount = 0;
+        return sprite;
     }
+
     sprite.frameCols = cols;
-    sprite.frameRows = rows;
-    sprite.animRow = rowIndex;
     sprite.frameSpeed = speed;
     sprite.frameCount = frameCount;
+
     sprite.currentFrame = 0;
     sprite.frameCounter = 0.0f;
-    sprite.frameWidth = sprite.texture.width / cols;
-    sprite.frameHeight = sprite.texture.height / rows;
-    sprite.frameRec = (Rectangle){0.0f, (float)rowIndex * sprite.frameHeight, (float)sprite.frameWidth, (float)sprite.frameHeight};
+
+    // Hitung lebar dan tinggi satu frame
+    if (cols > 0) {
+        sprite.frameWidth = sprite.texture.width / cols;
+    } else {
+        sprite.frameWidth = sprite.texture.width;
+        TraceLog(LOG_WARNING, "LoadAnimSprite: 'cols' parameter is 0, assuming 1 column for %s.", filename);
+    }
+
+    // Karena asumsi gambar hanya 1 baris, tinggi frame adalah tinggi total tekstur
+    sprite.frameHeight = sprite.texture.height; 
+    
+    // Hitung Rectangle sumber untuk frame awal (frame 0 di baris 0)
+    sprite.frameRec = (Rectangle){
+        0.0f,
+        0.0f, // frameRec.y sekarang selalu 0
+        (float)sprite.frameWidth,
+        (float)sprite.frameHeight
+    };
+    
+    TraceLog(LOG_INFO, "Loaded AnimSprite: %s",
+             filename, cols, sprite.frameWidth, sprite.frameHeight, frameCount);
+
     return sprite;
 }
 
@@ -105,8 +126,8 @@ static void BuildPathDFS_Internal(int x, int y, bool visited[MAP_ROWS][MAP_COLS]
     }
 
     visited[y][x] = true;
-    outPath[*count] = (Vector2){x * (float)TILE_SIZE_PX + TILE_SIZE_PX / 2.0f,
-                                y * (float)TILE_SIZE_PX + TILE_SIZE_PX / 2.0f};
+    outPath[*count] = (Vector2){x * (float)TILE_SIZE + TILE_SIZE / 2.0f,
+                                y * (float)TILE_SIZE + TILE_SIZE / 2.0f};
     (*count)++;
 
     for (int d = 0; d < 4; d++)
@@ -122,101 +143,42 @@ static void BuildPathDFS_Internal(int x, int y, bool visited[MAP_ROWS][MAP_COLS]
     }
 }
 
-void Enemies_BuildPath(int startX, int startY)
-{
+void Enemies_BuildPath(int startX, int startY, EnemyWave* waveToBuild) { // <--- UBAH DEFINISI
     bool visited[MAP_ROWS][MAP_COLS];
-    for (int r = 0; r < MAP_ROWS; r++)
-    {
-        for (int c = 0; c < MAP_COLS; c++)
-        {
+    for (int r = 0; r < MAP_ROWS; r++) {
+        for (int c = 0; c < MAP_COLS; c++) {
             visited[r][c] = false;
         }
     }
-    currentWave.pathCount = 0;
+    waveToBuild->pathCount = 0; // Akses anggota menggunakan ->
 
-    TraceLog(LOG_DEBUG, "Attempting to build path from (%d, %d). Tile value: %d", startX, startY, GetMapTile(startY, startX));
+    TraceLog(LOG_DEBUG, "Attempting to build path for wave %d from (%d, %d). Tile value: %d", 
+             waveToBuild->waveNum, startX, startY, GetMapTile(startY, startX));
 
     if (startX >= 0 && startX < MAP_COLS && startY >= 0 && startY < MAP_ROWS &&
-        IsPathTile(startY, startX))
-    {
+        IsPathTile(startY, startX)) {
 
-        BuildPathDFS_Internal(startX, startY, visited, currentWave.path, &currentWave.pathCount);
+        // BuildPathDFS_Internal masih menggunakan array statis, perlu diadaptasi jika ingin berbeda per wave
+        // Untuk saat ini, asumsikan ini mengisi waveToBuild->path
+        BuildPathDFS_Internal(startX, startY, visited, waveToBuild->path, &waveToBuild->pathCount);
 
-        TraceLog(LOG_INFO, "Enemy path built. Points: %d. Start: (%d, %d).", currentWave.pathCount, startX, startY);
+        TraceLog(LOG_INFO, "Enemy path built for wave %d. Points: %d. Start: (%d, %d).", 
+                 waveToBuild->waveNum, waveToBuild->pathCount, startX, startY);
 
-#ifdef _DEBUG
-        if (currentWave.pathCount > 0)
-        {
-            for (int i = 0; i < currentWave.pathCount; ++i)
-            {
-                TraceLog(LOG_DEBUG, "Path Point %d: (X=%.1f, Y=%.1f) (Map Row: %d, Map Col: %d)",
-                         i, currentWave.path[i].x, currentWave.path[i].y,
-                         (int)(currentWave.path[i].y / TILE_SIZE_PX),
-                         (int)(currentWave.path[i].x / TILE_SIZE_PX));
-            }
-        }
-        else
-        {
-            TraceLog(LOG_ERROR, "Path not built or pathCount is 0 after DFS!");
-        }
-#endif
-    }
-    else
-    {
-        TraceLog(LOG_ERROR, "Failed to build enemy path: Start point (%d, %d) is not a valid path tile (value %d).",
-                 startX, startY, GetMapTile(startY, startX));
-        currentWave.pathCount = 0;
+    } else {
+        TraceLog(LOG_ERROR, "Failed to build enemy path for wave %d: Start point (%d, %d) is not a valid path tile (value %d).",
+                 waveToBuild->waveNum, startX, startY, GetMapTile(startY, startX));
+        waveToBuild->pathCount = 0;
     }
 }
 
-void Enemies_InitAssets(void) {
-    // --- INISIALISASI PROPERTI MUSUH (MENGGANTIKAN #define) ---
-    enemy_properties[0] = (EnemyTypeProperties){
-        .sheetWidth = 672,
-        .sheetHeight = 150,
-        .totalCols = 14,
-        .totalRows = 5,
-        .animRow = 4,
-        .animSpeed = 10,
-        .frameCount = 7,
-        .drawScale = 0.7f,
-        .texturePath = "assets/enemy1.png"
-    };
-
-    enemy_properties[1] = (EnemyTypeProperties){
-        .sheetWidth = 1240,
-        .sheetHeight = 1860,
-        .totalCols = 4,
-        .totalRows = 6,
-        .animRow = 0,
-        .animSpeed = 12,
-        .frameCount = 4,
-        .drawScale = 0.05f,
-        .texturePath = "assets/enemy2.png"
-    };
-    // --- AKHIR INISIALISASI PROPERTI MUSUH ---
-
-    // Menggunakan properti yang baru diinisialisasi
-    enemy1_anim_data = LoadAnimSprite(
-        enemy_properties[0].texturePath,
-        enemy_properties[0].totalCols,
-        enemy_properties[0].totalRows,
-        enemy_properties[0].animRow,
-        enemy_properties[0].animSpeed,
-        enemy_properties[0].frameCount
-    );
-    enemy2_anim_data = LoadAnimSprite(
-        enemy_properties[1].texturePath,
-        enemy_properties[1].totalCols,
-        enemy_properties[1].totalRows,
-        enemy_properties[1].animRow,
-        enemy_properties[1].animSpeed,
-        enemy_properties[1].frameCount
-    );
+void Enemies_InitAssets() {
+    enemy1_anim_data = LoadAnimSprite("assets/enemy1.png",7,10,7);
+    enemy2_anim_data = LoadAnimSprite("assets/enemy2.png",4,12,4);
     TraceLog(LOG_INFO, "Enemy assets loaded.");
 }
 
-void Enemies_ShutdownAssets(void)
+void Enemies_ShutdownAssets()
 {
     UnloadAnimSprite(&enemy1_anim_data);
     UnloadAnimSprite(&enemy2_anim_data);
@@ -225,7 +187,6 @@ void Enemies_ShutdownAssets(void)
 
 void Enemies_Update(EnemyWave *wave, float deltaTime)
 {
-
     if (!wave || !wave->allEnemies || wave->pathCount < 2)
     {
         if (wave && wave->pathCount < 2)
@@ -252,7 +213,6 @@ void Enemies_Update(EnemyWave *wave, float deltaTime)
                 e->t = 0.0f;
                 wave->spawnedCount++;
                 wave->activeCount++;
-                TraceLog(LOG_INFO, "[SPAWN] Enemy %d (Type %d) spawned at (%.1f, %.1f) in Wave %d! Active Count: %d", wave->nextSpawnIndex, e->spriteType, e->position.x, e->position.y, wave->waveNum, wave->activeCount);
             }
 
             wave->nextSpawnIndex++;
@@ -284,7 +244,6 @@ void Enemies_Update(EnemyWave *wave, float deltaTime)
             else
             {
                 e->t = 1.0f;
-                TraceLog(LOG_WARNING, "[MOVE] Enemy %d: Segment length is 0 at seg %d! Auto advancing t.", i, s);
             }
 
             if (e->t >= 1.0f)
@@ -297,13 +256,11 @@ void Enemies_Update(EnemyWave *wave, float deltaTime)
                 {
                     e->active = false;
                     wave->activeCount--;
-                    TraceLog(LOG_INFO, "[END] Enemy %d reached end of path (seg %d / %d).", i, s, wave->pathCount);
                     DecreaseLife(1);
                 }
                 else
                 {
                     e->position = wave->path[s];
-                    TraceLog(LOG_INFO, "[MOVE] Enemy %d: Advanced to Segment %d. New pos: (%.1f, %.1f)", i, s, e->position.x, e->position.y);
                 }
             }
 
@@ -322,7 +279,6 @@ void Enemies_Update(EnemyWave *wave, float deltaTime)
             {
                 e->active = false;
                 wave->activeCount--;
-                TraceLog(LOG_INFO, "[END] Enemy %d finished path (beyond last segment).", i);
                 DecreaseLife(1);
             }
         }
@@ -332,7 +288,6 @@ void Enemies_Update(EnemyWave *wave, float deltaTime)
             e->active = false;
             wave->activeCount--;
             AddMoney(10 + (wave->waveNum * 2));
-            TraceLog(LOG_INFO, "Enemy defeated. Money added. Current money: $%d", GetMoney());
         }
     }
 }
@@ -354,7 +309,7 @@ void Enemies_Draw(const EnemyWave *wave, float globalScale, float offsetX, float
 
         DrawAnimSprite(&e->animData, screenPos, e->drawScale * globalScale, WHITE);
 
-        float healthBarWidth = TILE_SIZE_PX * globalScale * 0.8f;
+        float healthBarWidth = TILE_SIZE * globalScale * 0.8f;
         float healthBarHeight = 5.0f * globalScale;
 
         float healthBarOffsetY = -((float)e->animData.frameHeight * e->drawScale * globalScale / 2.0f) - (healthBarHeight / 2.0f) - (5.0f * globalScale);
@@ -373,126 +328,160 @@ void Enemies_Draw(const EnemyWave *wave, float globalScale, float offsetX, float
     }
 }
 
-void InitWaveAssets(void)
+void InitWaveAssets()
 {
     TraceLog(LOG_INFO, "Wave assets initialized (no global textures loaded here, handled by CreateWave).");
 }
 
-void ShutdownWaveAssets(void)
+void ShutdownWaveAssets()
 {
     TraceLog(LOG_INFO, "Wave assets shutdown (textures unloaded by FreeWave).");
 }
 
-EnemyWave CreateWave(int startRow, int startCol)
-{
-    currentWave = (EnemyWave){0};
-    SetWaveTotal(&currentWave, 5);
-
-    currentWave.allEnemies = (Enemy *)malloc(sizeof(Enemy) * currentWave.total);
-    if (currentWave.allEnemies == NULL)
-    {
-        TraceLog(LOG_ERROR, "Failed to allocate memory for enemies in wave. Returning empty wave.");
-        currentWave.total = 0;
-        return currentWave;
+// Ubah CreateWave agar mengembalikan pointer EnemyWave
+EnemyWave* CreateWave(int startRow, int startCol) { // <--- UBAH DEFINISI
+    EnemyWave* newWave = (EnemyWave*)malloc(sizeof(EnemyWave)); // Alokasikan memori
+    if (newWave == NULL) {
+        TraceLog(LOG_ERROR, "Failed to allocate memory for new EnemyWave. Returning NULL.");
+        return NULL;
     }
-    SetWaveActiveCount(&currentWave, 0);
-    currentWave.spawnedCount = 0;
-    currentWave.nextSpawnIndex = 0;
-    currentWave.spawnTimer = 0.0f;
-    SetWaveNum(&currentWave, 1);
-    SetWaveTimerCurrentTime(&currentWave, 0.0f);
-    SetWaveTimerDuration(&currentWave, WAVE_TIMER_DURATION);
-    SetWaveTimerVisible(&currentWave, true);
-    SetWaveActive(&currentWave, false);
-    SetTimerMapRow(&currentWave, startRow);
-    SetTimerMapCol(&currentWave, startCol);
+    *newWave = (EnemyWave){0}; // Inisialisasi memori yang dialokasikan menjadi nol (PENTING!)
 
-    currentWave.timerTexture = LoadTextureSafe("assets/timer.png");
-    if (currentWave.timerTexture.id == 0)
-    {
+    newWave->total = 20; // Atur total musuh di sini
+    newWave->allEnemies = (Enemy *)malloc(sizeof(Enemy) * newWave->total); // Alokasikan musuh
+    if (newWave->allEnemies == NULL) {
+        TraceLog(LOG_ERROR, "Failed to allocate memory for enemies in wave. Freeing newWave and returning NULL.");
+        free(newWave);
+        return NULL;
+    }
+    
+    newWave->activeCount = 0;
+    newWave->spawnedCount = 0;
+    newWave->nextSpawnIndex = 0;
+    newWave->spawnTimer = 1.0f; 
+
+    newWave->waveNum = currentWaveNum; // Gunakan currentWaveNum global
+
+    // Inisialisasi state timer untuk gelombang baru
+    newWave->interWaveTimer = 0.0f; // Reset untuk setiap gelombang baru
+    newWave->lastWaveSpawnTime = 0.0f; // Akan diisi saat wave ini aktif
+    newWave->previousWaveSpawnTimeReference = 0.0f; // Akan diisi dari state.c
+    
+    SetWaveTimerCurrentTime(newWave, 0.0f); // Reset timer utama
+    SetWaveTimerDuration(newWave, WAVE_TIMER_DURATION); // <--- KUNCI: Atur durasi timer di sini!
+    SetWaveActive(newWave, false); // Gelombang awalnya TIDAK aktif
+
+    if (newWave->waveNum == 1) {
+        newWave->waitingForNextWave = false;
+        SetWaveTimerVisible(newWave, true);
+        TraceLog(LOG_INFO, "Wave 1 created: Timer visible immediately.");
+    } else {
+        newWave->waitingForNextWave = true;
+        SetWaveTimerVisible(newWave, false); // Timer belum terlihat
+        TraceLog(LOG_INFO, "Wave %d created: Waiting for inter-wave delay from previous wave's start.", newWave->waveNum);
+    }
+    
+    SetTimerMapRow(newWave, startRow);
+    SetTimerMapCol(newWave, startCol);
+
+    newWave->timerTexture = LoadTextureSafe("assets/timer.png");
+    if (newWave->timerTexture.id == 0) {
         TraceLog(LOG_WARNING, "Failed to load assets/timer.png for wave timer.");
     }
 
-    Enemies_BuildPath(startCol, startRow);
+    // Panggil Enemies_BuildPath dengan pointer newWave
+    Enemies_BuildPath(startCol, startRow, newWave);
 
-    for (int i = 0; i < currentWave.total; i++)
-    {
-        Enemy *e = &currentWave.allEnemies[i];
+    for (int i = 0; i < newWave->total; i++) {
+        Enemy *e = &newWave->allEnemies[i];
         e->t = 0.0f;
-        e->speed = 30.0f + (currentWave.waveNum * 3.0f) + (rand() % 20);
+        e->speed = 15.0f + (newWave->waveNum * 3.0f) + (rand() % 20);
         e->active = false;
         e->spawned = false;
         e->segment = 0;
         e->position = (Vector2){0, 0};
-        e->hp = 100 + (currentWave.waveNum * 10);
+        e->hp = 100 + (newWave->waveNum * 10);
         e->spriteType = rand() % 2;
-        EnemyTypeProperties *props = &enemy_properties[e->spriteType]; // Ambil properti yang sesuai
 
-        if (e->spriteType == 0)
-        {
+        if (e->spriteType == 0) {
             e->animData = enemy1_anim_data;
-            e->drawScale = props->drawScale;
-        }
-        else
-        {
+            e->drawScale = 0.7f;
+        } else {
             e->animData = enemy2_anim_data;
-            e->drawScale = props->drawScale;
-        }
-
-        if (e->animData.texture.id == 0)
-        {
-            TraceLog(LOG_ERROR, "ERROR: Enemy %d (Type %d) has an invalid AnimSprite texture ID after assignment!", i, e->spriteType);
-        }
-        else
-        {
-            TraceLog(LOG_DEBUG, "Enemy %d (Type %d) AnimSprite texture ID: %d, Width: %d, Height: %d", i, e->spriteType, e->animData.texture.id, e->animData.texture.width, e->animData.texture.height);
+            e->drawScale = 0.2f;  
         }
         e->animData.currentFrame = 0;
         e->animData.frameCounter = 0.0f;
     }
-    TraceLog(LOG_INFO, "Wave %d created with %d enemies. Path points: %d.", currentWave.waveNum, currentWave.total, currentWave.pathCount);
-    return currentWave;
+    TraceLog(LOG_INFO, "Wave %d created with %d enemies. Path points: %d. Timer Duration: %.2f", 
+             newWave->waveNum, newWave->total, newWave->pathCount, newWave->timerDuration);
+    return newWave; // Kembalikan pointer
 }
-void FreeWave(EnemyWave *wave)
-{
-    if (wave)
-    {
-        if (wave->allEnemies)
-        {
-            free(wave->allEnemies);
-            wave->allEnemies = NULL;
+
+// Ubah FreeWave agar menerima pointer ke pointer EnemyWave
+void FreeWave(EnemyWave **wave) { // <--- UBAH DEFINISI
+    if (wave && *wave) { // Periksa apakah pointer ke pointer valid dan pointer itu sendiri tidak NULL
+        if ((*wave)->allEnemies) {
+            free((*wave)->allEnemies);
+            (*wave)->allEnemies = NULL;
         }
-        if (wave->timerTexture.id != 0)
-        {
-            UnloadTextureSafe(&wave->timerTexture);
-            wave->timerTexture = (Texture2D){0};
+        if ((*wave)->timerTexture.id != 0) {
+            UnloadTextureSafe(&(*wave)->timerTexture);
+            (*wave)->timerTexture = (Texture2D){0};
         }
-        *wave = (EnemyWave){0};
+        free(*wave); // Bebaskan memori EnemyWave itu sendiri
+        *wave = NULL; // <--- Set pointer yang dilewatkan menjadi NULL setelah dibebaskan (PENTING!)
+        TraceLog(LOG_INFO, "Wave freed.");
     }
 }
 bool AllEnemiesInWaveFinished(const EnemyWave *wave)
 {
     return (wave && wave->spawnedCount >= wave->total && wave->activeCount <= 0);
 }
-void UpdateWaveTimer(EnemyWave *wave, float deltaTime)
-{
-    if (!wave)
-        return;
-    if (GetWaveActive(wave))
-    {
+void UpdateWaveTimer(EnemyWave *wave, float deltaTime) {
+    if (!wave) {
+        TraceLog(LOG_WARNING, "UpdateWaveTimer: Wave is NULL.");
         return;
     }
-    if (GetWaveTimerVisible(wave))
-    {
+
+    // Fase 1: Menunggu Jeda Antar-Gelombang (waitingForNextWave)
+    if (wave->waitingForNextWave) {
+        // Hitung waktu berlalu dari referensi waktu spawn gelombang sebelumnya
+        float timeSincePreviousTimerVanished = GetTime() - wave->previousWaveSpawnTimeReference;
+        
+        TraceLog(LOG_DEBUG, "[W%d (num %d)] WAITING. Time since prev timer vanished: %.2f / %.2f (INTER_WAVE_DELAY). Prev ref: %.2f",
+                 wave->waveNum, currentWaveNum, timeSincePreviousTimerVanished, INTER_WAVE_DELAY, wave->previousWaveSpawnTimeReference);
+
+        if (timeSincePreviousTimerVanished >= INTER_WAVE_DELAY) {
+            wave->waitingForNextWave = false; // Jeda selesai
+            SetWaveTimerVisible(wave, true);  // Timer utama sekarang terlihat
+            SetWaveTimerCurrentTime(wave, 0.0f); // <--- KUNCI: Reset timer utama ke 0.0f di sini!
+            TraceLog(LOG_INFO, "[W%d (num %d)] Inter-wave delay finished. Timer visible, starting countdown from 0.0f. Current Time: %.2f",
+                     wave->waveNum, currentWaveNum, GetTime()); //
+        }
+        return; // SANGAT PENTING: Jangan lanjutkan ke hitung mundur utama jika masih dalam jeda.
+    }
+
+    // Fase 2: Hitung Mundur Utama (setelah jeda selesai, atau untuk gelombang 1)
+    // Hanya update jika gelombang belum aktif DAN timer terlihat.
+    if (!GetWaveActive(wave) && GetWaveTimerVisible(wave)) {
         float timer = GetWaveTimerCurrentTime(wave) + deltaTime;
         SetWaveTimerCurrentTime(wave, timer);
-        TraceLog(LOG_DEBUG, "Wave %d Timer: %.2f / %.2f", wave->waveNum, timer, GetWaveTimerDuration(wave));
-        if (timer >= GetWaveTimerDuration(wave))
-        {
-            SetWaveTimerCurrentTime(wave, 0.0f);
-            SetWaveTimerVisible(wave, false);
-            SetWaveActive(wave, true);
-            TraceLog(LOG_INFO, "Wave %d timer finished. Wave ACTIVATED!", wave->waveNum);
+        TraceLog(LOG_DEBUG, "[W%d (num %d)] MAIN TIMER: %.2f / %.2f (Duration: %.2f). Current Time: %.2f",
+                 wave->waveNum, currentWaveNum, GetWaveTimerCurrentTime(wave), GetWaveTimerDuration(wave), WAVE_TIMER_DURATION, GetTime()); //
+        
+        if (timer >= GetWaveTimerDuration(wave)) {
+            SetWaveTimerCurrentTime(wave, 0.0f); // Reset lagi untuk jaga-jaga
+            SetWaveTimerVisible(wave, false);    // Sembunyikan timer setelah selesai
+            
+            // --- KUNCI: Rekam waktu saat timer ini menghilang ---
+            wave->previousWaveSpawnTimeReference = GetTime(); // <--- UBAH: Ini sekarang merekam waktu timer menghilang
+            // lastWaveSpawnTime tetap mencatat waktu saat gelombang ini mulai spawn
+            SetWaveActive(wave, true);           // Aktifkan gelombang: musuh mulai spawn
+            wave->lastWaveSpawnTime = GetTime(); // Rekam waktu spawn gelombang ini
+
+            TraceLog(LOG_INFO, "[W%d (num %d)] Timer finished. Wave ACTIVATED (enemies will spawn)! Timer vanished time: %.2f",
+                     wave->waveNum, currentWaveNum, wave->previousWaveSpawnTimeReference); //
         }
     }
 }
@@ -500,16 +489,18 @@ void DrawGameTimer(const EnemyWave *wave, float globalScale, float offsetX, floa
 {
     if (!wave || !GetWaveTimerVisible(wave))
         return;
-    float tileScreenSize = TILE_SIZE_PX * globalScale;
+    float tileScreenSize = TILE_SIZE * globalScale;
     float timerCenterX = offsetX + timerCol * tileScreenSize + tileScreenSize / 2.0f;
     float timerCenterY = offsetY + timerRow * tileScreenSize + tileScreenSize / 2.0f;
     Vector2 position = {timerCenterX, timerCenterY};
-    float timerRadius = (TILE_SIZE_PX / 2.0f) * globalScale * TIMER_OVERALL_SIZE_FACTOR;
+    float timerRadius = (TILE_SIZE / 2.0f) * globalScale * TIMER_OVERALL_SIZE_FACTOR;
+    
+    // Pastikan progress valid (antara 0.0 dan 1.0)
     float progress = GetWaveTimerCurrentTime(wave) / GetWaveTimerDuration(wave);
-    if (progress < 0.0f)
-        progress = 0.0f;
-    if (progress > 1.0f)
-        progress = 1.0f;
+    if (GetWaveTimerDuration(wave) <= 0.0f) progress = 0.0f; // Hindari pembagian nol
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+
     float angle = 360.0f * progress;
     DrawCircleSector(position, timerRadius, -90, -90 + angle, 100, RED);
     DrawCircle(position.x, position.y, timerRadius * 0.9f, LIGHTGRAY);
