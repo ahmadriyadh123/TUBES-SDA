@@ -444,7 +444,6 @@ void UpdateWaveTimer(EnemyWave *wave, float deltaTime) {
         return;
     }
 
-    
     if (wave->waitingForNextWave) {
         
         float timeSincePreviousTimerVanished = GetTime() - wave->previousWaveSpawnTimeReference;
@@ -461,9 +460,7 @@ void UpdateWaveTimer(EnemyWave *wave, float deltaTime) {
         }
         return; 
     }
-
-    
-    
+      
     if (!GetWaveActive(wave) && GetWaveTimerVisible(wave)) {
         float timer = GetWaveTimerCurrentTime(wave) + deltaTime;
         SetWaveTimerCurrentTime(wave, timer);
@@ -485,6 +482,7 @@ void UpdateWaveTimer(EnemyWave *wave, float deltaTime) {
         }
     }
 }
+
 void DrawGameTimer(const EnemyWave *wave, float globalScale, float offsetX, float offsetY, int timerRow, int timerCol)
 {
     if (!wave || !GetWaveTimerVisible(wave))

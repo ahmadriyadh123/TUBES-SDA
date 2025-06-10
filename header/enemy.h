@@ -61,7 +61,6 @@ typedef struct {
     float waitingForNextWave;
     float lastWaveSpawnTime; 
     float previousWaveSpawnTimeReference;
-    
 } EnemyWave;
 
 extern EnemyWave *currentWave; 
