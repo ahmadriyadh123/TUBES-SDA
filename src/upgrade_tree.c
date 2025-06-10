@@ -8,6 +8,14 @@
 
 TowerUpgradeTree tower1UpgradeTree;
 
+static Texture2D lockedIconTex;
+static Texture2D unlockedIconTex;
+static Texture2D purchasedIconTex;
+static Texture2D excludedIconTex;
+
+static UpgradeNode *currentOrbitParentNode = NULL;
+static UpgradeNode *prevOrbitParentNode = NULL;
+
 Texture2D upgradeIcon_AttackSpeedBase = {0};
 Texture2D upgradeIcon_AttackPowerBase = {0};
 Texture2D upgradeIcon_SpecialEffectBase = {0};
@@ -21,6 +29,9 @@ Texture2D upgradeIcon_LargeAoERadius = {0};
 Texture2D upgradeIcon_HighCritChance = {0};
 Texture2D upgradeIcon_LethalPoison = {0};
 Texture2D upgradeIcon_MassSlow = {0};
+
+bool isUpgradeAgreementPanelVisible = false;
+UpgradeNode *selectedUpgradeNodeForAgreement = NULL;
 
 void InitUpgradeTree(TowerUpgradeTree* tree, TowerType type) {
     
@@ -341,11 +352,11 @@ void UpdateUpgradeOrbitMenu(float deltaTime, Vector2 mousePos, float currentTile
 
     Vector2 orbitCenter = towerSelectionUIPos;
     float orbitRadius = TILE_SIZE * currentTileScale * ORBIT_RADIUS_TILE_FACTOR;
+    bool clickHandledByOrbitMenu = false;
+    
+    UpgradeNode *parentNode = GetCurrentOrbitParentNode();
     int numChildren = GetNumChildren(parentNode);
     int totalButtons = numChildren + (parentNode->parent != NULL ? 1 : 0);
-    bool clickHandledByOrbitMenu = false;
-
-    UpgradeNode *parentNode = GetCurrentOrbitParentNode();
     if (!parentNode)
     {
         TraceLog(LOG_ERROR, "UpdateUpgradeOrbitMenuLogic: Parent node is NULL!");
@@ -449,13 +460,13 @@ void DrawUpgradeOrbitMenu(float currentTileScale, float mapScreenOffsetX, float 
 
     Vector2 orbitCenter = towerSelectionUIPos;
     float orbitRadius = TILE_SIZE * currentTileScale * ORBIT_RADIUS_TILE_FACTOR;
-    int numChildren = GetNumChildren(parentNode);
-    int totalButtons = numChildren + (parentNode->parent != NULL ? 1 : 0);
-
+    
     DrawCircleLines((int)orbitCenter.x, (int)orbitCenter.y, orbitRadius, RAYWHITE);
     UpdateUpgradeTreeStatus(&tower1UpgradeTree, selectedTowerForDeletion);
-
+    
     UpgradeNode *parentNode = currentOrbitParentNode;
+    int numChildren = GetNumChildren(parentNode);
+    int totalButtons = numChildren + (parentNode->parent != NULL ? 1 : 0);
     if (!parentNode)
     {
         TraceLog(LOG_ERROR, "DrawUpgradeOrbitMenu: Parent node is NULL!");

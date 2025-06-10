@@ -40,19 +40,15 @@ void DrawMap(float globalScale, float offsetX, float offsetY) {
             int tileIndex = gameMap[r][c]; 
             Rectangle sourceRect = GetTileSourceRect(tileIndex); 
 
-            
             Rectangle destRect = {
-                offsetX + c * TILE_SIZE_PX * globalScale,
-                offsetY + r * TILE_SIZE_PX * globalScale,
-                TILE_SIZE_PX * globalScale,
-                TILE_SIZE_PX * globalScale
+                offsetX + c * TILE_SIZE * globalScale,
+                offsetY + r * TILE_SIZE * globalScale,
+                TILE_SIZE * globalScale,
+                TILE_SIZE * globalScale
             };
 
-            
             DrawTexturePro(tileSheetTex, sourceRect, destRect, (Vector2){0, 0}, 0.0f, WHITE);
 
-            
-            
             if (tileIndex == 4) {
                 
                 Rectangle circleSource = {0, 0, (float)emptyCircleTex.width, (float)emptyCircleTex.height};
@@ -65,14 +61,14 @@ void DrawMap(float globalScale, float offsetX, float offsetY) {
 
 Rectangle GetTileSourceRect(int tileIndex) {
     switch (tileIndex) {
-        case 0: return (Rectangle){0, 0, TILE_SIZE_PX, TILE_SIZE_PX};
-        case 3: return (Rectangle){2 * TILE_SIZE_PX, 0, TILE_SIZE_PX, TILE_SIZE_PX};
-        case 8: return (Rectangle){0, 2 * TILE_SIZE_PX, TILE_SIZE_PX, TILE_SIZE_PX};
-        case 25: return (Rectangle){5 * TILE_SIZE_PX, 2 * TILE_SIZE_PX, TILE_SIZE_PX, TILE_SIZE_PX};
-        case 34: return (Rectangle){2 * TILE_SIZE_PX, 4 * TILE_SIZE_PX, TILE_SIZE_PX, TILE_SIZE_PX};
-        case 37: return (Rectangle){5 * TILE_SIZE_PX, 4 * TILE_SIZE_PX, TILE_SIZE_PX, TILE_SIZE_PX};
-        case 53: return (Rectangle){4 * TILE_SIZE_PX, 2 * TILE_SIZE_PX, TILE_SIZE_PX, TILE_SIZE_PX};
-        default: return (Rectangle){0, 0, TILE_SIZE_PX, TILE_SIZE_PX};
+        case 0: return (Rectangle){0, 0, TILE_SIZE, TILE_SIZE};
+        case 3: return (Rectangle){2 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE};
+        case 8: return (Rectangle){0, 2 * TILE_SIZE, TILE_SIZE, TILE_SIZE};
+        case 25: return (Rectangle){5 * TILE_SIZE, 2 * TILE_SIZE, TILE_SIZE, TILE_SIZE};
+        case 34: return (Rectangle){2 * TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE, TILE_SIZE};
+        case 37: return (Rectangle){5 * TILE_SIZE, 4 * TILE_SIZE, TILE_SIZE, TILE_SIZE};
+        case 53: return (Rectangle){4 * TILE_SIZE, 2 * TILE_SIZE, TILE_SIZE, TILE_SIZE};
+        default: return (Rectangle){0, 0, TILE_SIZE, TILE_SIZE};
     }
 }
 
