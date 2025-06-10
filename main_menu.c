@@ -1,6 +1,6 @@
 #include "raylib.h"
 #include "main_menu.h"
-#include "utils.h" // Untuk FileExistsSafe, StrCopySafe
+#include "utils.h" 
 #include "string.h"
 #include "stdio.h"
 
@@ -15,8 +15,8 @@ Texture2D exitButtonTex;
 
 CustomMapEntry customMaps[MAX_CUSTOM_MAPS];
 int customMapCount = 0;
-int selectedCustomMapIndex = -1; // -1 berarti belum ada yang dipilih
-static int scrollOffset = 0; // Untuk scrolling daftar map
+int selectedCustomMapIndex = -1; 
+static int scrollOffset = 0; 
 
 
 void LoadMainMenuResources() {
@@ -105,7 +105,7 @@ void HandleMainMenuInput() {
     }
 }
 
-// --- FUNGSI HELPER BARU ---
+
 void DrawButton(Rectangle rect, const char* text, Color bgColor, Color textColor, int fontSize) {
     DrawRectangleRec(rect, bgColor);
     Vector2 textSize = MeasureTextEx(GetFontDefault(), text, (float)fontSize, 1);
@@ -116,24 +116,24 @@ bool CheckButtonClick(Rectangle rect, Vector2 mousePos) {
     return CheckCollisionPointRec(mousePos, rect);
 }
 
-// --- BARU: Fungsi untuk mengelola daftar custom map ---
+
 void LoadCustomMapList() {
     customMapCount = 0;
-    selectedCustomMapIndex = -1; // Reset pilihan
+    selectedCustomMapIndex = -1; 
     TraceLog(LOG_INFO, "MAIN_MENU: Loading custom map list from 'maps/' directory.");
 
-    // Dapatkan daftar file di direktori 'maps/'
+    
     FilePathList files = LoadDirectoryFiles("maps/");
     if (files.count == 0) {
         TraceLog(LOG_INFO, "MAIN_MENU: No custom maps found in 'maps/' directory.");
     } else {
         for (unsigned int i = 0; i < files.count; i++) {
             const char* fileName = GetFileName(files.paths[i]);
-            // Hanya proses file .csv dan bukan folder, dan bukan custom_map.csv yang default editor
+            
             if (IsFileExtension(fileName, ".txt") && strcmp(fileName, "maps/map.txt") != 0) {
                 if (customMapCount < MAX_CUSTOM_MAPS) {
                     StrCopySafe(customMaps[customMapCount].name, fileName, MAP_FILENAME_MAX_LEN);
-                    snprintf(customMaps[customMapCount].filePath, MAP_FILENAME_MAX_LEN, "maps/%s", fileName); // <--- SIMPAN PATH LENGKAP
+                    snprintf(customMaps[customMapCount].filePath, MAP_FILENAME_MAX_LEN, "maps/%s", fileName); 
                     TraceLog(LOG_INFO, "MAIN_MENU: Found custom map: %s", customMaps[customMapCount].name);
                     customMapCount++;
                 } else {
@@ -146,10 +146,10 @@ void LoadCustomMapList() {
     TraceLog(LOG_INFO, "MAIN_MENU: Loaded %d custom maps.", customMapCount);
 }
 
-// --- FUNGSI UPDATE/DRAW PLAY SELECTION MENU YANG DIPERBAIKI ---
+
 void UpdatePlaySelectionMenu(void) {
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        Vector2 mousePos = GetMousePosition(); // MousePos perlu di sini untuk cek klik
+        Vector2 mousePos = GetMousePosition(); 
         int screenWidth = GetScreenWidth();
         int screenHeight = GetScreenHeight();
 
@@ -175,15 +175,15 @@ void UpdatePlaySelectionMenu(void) {
             backButtonWidth, 
             backButtonHeight 
         };    
-        // Panggil CheckButtonClick untuk mendeteksi klik
-        if (CheckButtonClick(defaultButtonRect, mousePos)) { // Hanya cek klik
+        
+        if (CheckButtonClick(defaultButtonRect, mousePos)) { 
             TraceLog(LOG_INFO, "Default Game Selected! Starting GAMEPLAY.");
             currentGameState = GAMEPLAY;
-        } else if (CheckButtonClick(customButtonRect, mousePos)) { // Hanya cek klik
+        } else if (CheckButtonClick(customButtonRect, mousePos)) { 
             TraceLog(LOG_INFO, "Custom Game Selected! Loading custom map list.");
             LoadCustomMapList();
             currentGameState = MAIN_MENU_CUSTOM_MAP_LIST;
-        } else if (CheckButtonClick(backButtonRect, mousePos)) { // Hanya cek klik
+        } else if (CheckButtonClick(backButtonRect, mousePos)) { 
             TraceLog(LOG_INFO, "Back Button Clicked! Returning to Main Menu.");
             currentGameState = MAIN_MENU;
         }
@@ -213,7 +213,7 @@ void DrawPlaySelectionMenu(void) {
     float totalButtonsHeight = buttonHeight * 3 + spacing * 2;
     float startYInPanel = panelY + (panelHeight - totalButtonsHeight) / 2.0f;
 
-    // Panggil DrawButton untuk menggambar tombol
+    
     Rectangle defaultButtonRect = { panelX + PANEL_PADDING , startYInPanel - 200, buttonWidth, buttonHeight + 200};
     DrawButton(defaultButtonRect, "Default Game", LIGHTGRAY, BLACK, 40);
 
@@ -230,7 +230,7 @@ void DrawPlaySelectionMenu(void) {
     DrawButton(backButtonRect, "Back", LIGHTGRAY, BLACK, 20);
 }
 
-// --- FUNGSI UPDATE/DRAW CUSTOM MAP LIST MENU YANG DIPERBAIKI ---
+
 void UpdateCustomMapListMenu(void) {
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         Vector2 mousePos = GetMousePosition();
@@ -244,7 +244,7 @@ void UpdateCustomMapListMenu(void) {
 
         Rectangle listAreaRect = { panelX + 10, panelY + 80, panelWidth - 20, MAP_LIST_VIEW_HEIGHT };
 
-        // Cek klik pada tombol Back
+        
         float backButtonWidth = panelWidth * 0.5f; 
         float backButtonHeight = PANEL_BUTTON_HEIGHT;
         Rectangle backButtonRect = { 
@@ -253,13 +253,13 @@ void UpdateCustomMapListMenu(void) {
             backButtonWidth, 
             backButtonHeight 
         };        
-        if (CheckButtonClick(backButtonRect, mousePos)) { // Hanya cek klik
+        if (CheckButtonClick(backButtonRect, mousePos)) { 
             TraceLog(LOG_INFO, "Back Button Clicked! Returning to Play Selection Menu.");
             currentGameState = MAIN_MENU_PLAY_SELECTION;
             return;
         }
 
-        // Cek klik pada item daftar map
+        
         if (CheckCollisionPointRec(mousePos, listAreaRect)) {
             int clickedY = (int)mousePos.y - (int)listAreaRect.y;
             int itemIndex = (clickedY + scrollOffset) / MAP_LIST_ITEM_HEIGHT;
@@ -315,7 +315,7 @@ void DrawCustomMapListMenu(void) {
     }
     EndScissorMode();
 
-    // Gambar tombol Back
+    
     float backButtonWidth = panelWidth * 0.5f; 
     float backButtonHeight = PANEL_BUTTON_HEIGHT;
     Rectangle backButtonRect = { 
@@ -324,5 +324,5 @@ void DrawCustomMapListMenu(void) {
         backButtonWidth, 
         backButtonHeight 
     };
-    DrawButton(backButtonRect, "Back", LIGHTGRAY, BLACK, 20); // Hanya gambar
+    DrawButton(backButtonRect, "Back", LIGHTGRAY, BLACK, 20); 
 }
