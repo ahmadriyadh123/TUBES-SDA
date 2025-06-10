@@ -1,8 +1,8 @@
 #include "level_editor.h"
-#include "map.h" 
-#include "utils.h" 
+#include "map.h"
+#include "utils.h"
 #include "raylib.h"
-#include "enemy.h" 
+#include "enemy.h"
 #include <string.h>
 #include <stdio.h>
 #include <stddef.h>
@@ -14,7 +14,7 @@ void InitializeLevelEditor(const int current_game_map[MAP_ROWS][MAP_COLS])
 {
     memcpy(editorState.map, current_game_map, sizeof(int) * MAP_ROWS * MAP_COLS);
     memcpy(editorState.baseGameMap, current_game_map, sizeof(int) * MAP_ROWS * MAP_COLS);
-    
+
     for (int row = 0; row < MAP_ROWS; row++)
     {
         for (int col = 0; col < MAP_COLS; col++)
@@ -22,7 +22,7 @@ void InitializeLevelEditor(const int current_game_map[MAP_ROWS][MAP_COLS])
             editorState.map[row][col] = 0;
         }
     }
-    
+
     editorState.pathButtonTex = LoadTextureSafe("assets/path_button.png");
     editorState.towerButtonTex = LoadTextureSafe("assets/tower_button.png");
     editorState.waveButtonTex = LoadTextureSafe("assets/waves_button.png");
@@ -31,13 +31,13 @@ void InitializeLevelEditor(const int current_game_map[MAP_ROWS][MAP_COLS])
     editorState.okButtonTex = LoadTextureSafe("assets/ok_button.png");
     editorState.saveButtonTex = LoadTextureSafe("assets/save_button.png");
 
-    editorState.selectedTool = TOOL_PATH; 
+    editorState.selectedTool = TOOL_PATH;
     editorState.wavePanelActive = false;
-    editorState.waveCount = (customWaveCount > 0) ? customWaveCount : 1; 
+    editorState.waveCount = (customWaveCount > 0) ? customWaveCount : 1;
     editorState.isDraggingPath = false;
     editorState.requestSaveAndPlay = false;
-    StrCopySafe(editorState.mapFileName, "maps/map.txt", sizeof(editorState.mapFileName)); 
-    StrCopySafe(editorState.mapDisplayName, "New Map", sizeof(editorState.mapDisplayName)); 
+    StrCopySafe(editorState.mapFileName, "maps/map.txt", sizeof(editorState.mapFileName));
+    StrCopySafe(editorState.mapDisplayName, "New Map", sizeof(editorState.mapDisplayName));
 
     TraceLog(LOG_INFO, "Level editor initialized.");
 }
@@ -64,7 +64,7 @@ int GetEditorMapTile(int row, int col)
     {
         return editorState.map[row][col];
     }
-    return 0; 
+    return 0;
 }
 const char *GetEditorMapFileName() { return editorState.mapFileName; }
 int GetEditorWaveCount() { return editorState.waveCount; }
@@ -83,24 +83,194 @@ void SetEditorMapFileName(const char *fileName)
 {
     StrCopySafe(editorState.mapFileName, fileName, sizeof(editorState.mapFileName));
 }
-void SetEditorWaveCount(int count) { editorState.waveCount = count >= 1 ? count : 1; } 
+void SetEditorWaveCount(int count) { editorState.waveCount = count >= 1 ? count : 1; }
 
 bool LoadLevelFromFile(const char *fileName)
 {
     TraceLog(LOG_INFO, "LoadLevelFromFile stub called for: %s", fileName);
-    return false; 
+    return false;
 }
 void SaveLevelToFile(const char *fileName)
 {
     TraceLog(LOG_INFO, "SaveLevelToFile stub called for: %s", fileName);
-    
 }
 
 void HandleLevelEditorInput(float globalScale, float offsetX, float offsetY)
 {
-    // ntaran bang
+    Vector2 mousePos = GetMousePosition();
+    float screenWidth = (float)GetScreenWidth();
+    float screenHeight = (float)GetScreenHeight();
+
+    float availableWidth = screenWidth * (1.0f - 2 * EDITOR_VIEW_PADDING_SIDE_FACTOR);
+    float availableHeight = screenHeight * (1.0f - EDITOR_VIEW_PADDING_TOP_FACTOR - EDITOR_VIEW_PADDING_BOTTOM_FACTOR);
+    float baseMapWidth = MAP_COLS * TILE_SIZE;
+    float baseMapHeight = MAP_ROWS * TILE_SIZE;
+    float editorMapScale = fmin(availableWidth / baseMapWidth, availableHeight / baseMapHeight);
+    float editorMapDisplayWidth = baseMapWidth * editorMapScale;
+    float editorMapDisplayHeight = baseMapHeight * editorMapScale;
+    float editorMapOffsetX = screenWidth * EDITOR_VIEW_PADDING_SIDE_FACTOR + (availableWidth - editorMapDisplayWidth) / 2.0f;
+    float editorMapOffsetY = screenHeight * EDITOR_VIEW_PADDING_TOP_FACTOR + (availableHeight - editorMapDisplayHeight) / 2.0f;
+    float tileScreenSize = TILE_SIZE * editorMapScale;
+
+    float buttonWidth = TILE_SIZE * editorMapScale * EDITOR_BUTTON_WIDTH_FACTOR;
+    float buttonHeight = TILE_SIZE * editorMapScale * EDITOR_BUTTON_HEIGHT_FACTOR;
+    float buttonSpacing = TILE_SIZE * editorMapScale * EDITOR_BUTTON_SPACING_FACTOR;
+    float buttonsGroupWidth = (buttonWidth * 3 + buttonSpacing * 2);
+    float buttonsStartX = screenWidth / 2.0f - buttonsGroupWidth / 2.0f;
+    float buttonsStartY = editorMapOffsetY + editorMapDisplayHeight + 20.0f * editorMapScale;
+
+    Rectangle pathButtonRect = {buttonsStartX, buttonsStartY, buttonWidth, buttonHeight};
+    Rectangle towerButtonRect = {buttonsStartX + buttonWidth + buttonSpacing, buttonsStartY, buttonWidth, buttonHeight};
+    Rectangle waveButtonRect = {buttonsStartX + 2 * (buttonWidth + buttonSpacing), buttonsStartY, buttonWidth, buttonHeight};
+
+    float saveButtonScale = editorMapScale * 0.25f;
+    float saveButtonTexOriginalWidth = (float)editorState.saveButtonTex.width;
+    float saveButtonTexOriginalHeight = (float)editorState.saveButtonTex.height;
+    float saveButtonDrawWidth = saveButtonTexOriginalWidth * saveButtonScale;
+    float saveButtonDrawHeight = saveButtonTexOriginalHeight * saveButtonScale;
+    float saveButtonMargin = 20.0f;
+    Rectangle saveButtonRect = {
+        screenWidth - saveButtonDrawWidth - saveButtonMargin,
+        screenHeight - saveButtonDrawHeight - saveButtonMargin,
+        saveButtonDrawWidth,
+        saveButtonDrawHeight};
+
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+    {
+
+        if (CheckCollisionPointRec(mousePos, pathButtonRect))
+        {
+            SetEditorSelectedTool(TOOL_PATH);
+            SetEditorWavePanelActive(false);
+            editorState.isDraggingPath = false;
+            TraceLog(LOG_INFO, "Editor: Selected PATH tool.");
+            return;
+        }
+        else if (CheckCollisionPointRec(mousePos, towerButtonRect))
+        {
+            SetEditorSelectedTool(TOOL_TOWER);
+            SetEditorWavePanelActive(false);
+            editorState.isDraggingPath = false;
+            TraceLog(LOG_INFO, "Editor: Selected TOWER tool.");
+            return;
+        }
+        else if (CheckCollisionPointRec(mousePos, waveButtonRect))
+        {
+            SetEditorSelectedTool(TOOL_WAVE);
+            SetEditorWavePanelActive(true);
+            editorState.isDraggingPath = false;
+            TraceLog(LOG_INFO, "Editor: Selected WAVE tool. Opening wave panel.");
+            return;
+        }
+
+        if (CheckCollisionPointRec(mousePos, saveButtonRect))
+        {
+            TraceLog(LOG_INFO, "Editor: 'Save and Play' button clicked (stub).");
+            editorState.requestSaveAndPlay = true;
+            return;
+        }
+    }
+
+    if (editorState.wavePanelActive)
+    {
+    }
+    else
+    {
+    }
 }
 void DrawLevelEditor(float globalScale, float offsetX, float offsetY)
 {
-    // ntaran bang
+    float screenWidth = (float)GetScreenWidth();
+    float screenHeight = (float)GetScreenHeight();
+
+    float availableWidth = screenWidth * (1.0f - 2 * EDITOR_VIEW_PADDING_SIDE_FACTOR);
+    float availableHeight = screenHeight * (1.0f - EDITOR_VIEW_PADDING_TOP_FACTOR - EDITOR_VIEW_PADDING_BOTTOM_FACTOR);
+    float baseMapWidth = MAP_COLS * TILE_SIZE;
+    float baseMapHeight = MAP_ROWS * TILE_SIZE;
+    float editorMapScale = fmin(availableWidth / baseMapWidth, availableHeight / baseMapHeight);
+    float editorMapDisplayWidth = baseMapWidth * editorMapScale;
+    float editorMapDisplayHeight = baseMapHeight * editorMapScale;
+    float editorMapOffsetX = screenWidth * EDITOR_VIEW_PADDING_SIDE_FACTOR + (availableWidth - editorMapDisplayWidth) / 2.0f;
+    float editorMapOffsetY = screenHeight * EDITOR_VIEW_PADDING_TOP_FACTOR + (availableHeight - editorMapDisplayHeight) / 2.0f;
+    float tileScreenSize = TILE_SIZE * editorMapScale;
+
+    for (int r = 0; r < MAP_ROWS; r++)
+    {
+        for (int c = 0; c < MAP_COLS; c++)
+        {
+            int tileIndex = editorState.map[r][c];
+            Rectangle sourceRect = GetTileSourceRect(tileIndex);
+            Rectangle destRect = {
+                editorMapOffsetX + c * tileScreenSize,
+                editorMapOffsetY + r * tileScreenSize,
+                tileScreenSize,
+                tileScreenSize};
+            Color drawColor = WHITE;
+
+            if (tileIndex == 0)
+            {
+                sourceRect = GetTileSourceRect(0);
+                drawColor = Fade(WHITE, 0.3f);
+            }
+
+            DrawTexturePro(tileSheetTex, sourceRect, destRect, (Vector2){0, 0}, 0.0f, drawColor);
+
+            if (tileIndex == 4)
+            {
+                Rectangle circleSource = {0, 0, (float)emptyCircleTex.width, (float)emptyCircleTex.height};
+                DrawTexturePro(emptyCircleTex, circleSource, destRect, (Vector2){0, 0}, 0.0f, drawColor);
+            }
+
+            DrawRectangleLinesEx(destRect, 1, Fade(LIGHTGRAY, 0.5f));
+        }
+    }
+
+    float buttonWidth = TILE_SIZE * editorMapScale * EDITOR_BUTTON_WIDTH_FACTOR;
+    float buttonHeight = TILE_SIZE * editorMapScale * EDITOR_BUTTON_HEIGHT_FACTOR;
+    float buttonSpacing = TILE_SIZE * editorMapScale * EDITOR_BUTTON_SPACING_FACTOR;
+    float buttonsGroupWidth = (buttonWidth * 3 + buttonSpacing * 2);
+    float buttonsStartX = screenWidth / 2.0f - buttonsGroupWidth / 2.0f;
+    float buttonsStartY = editorMapOffsetY + editorMapDisplayHeight + 20.0f * editorMapScale;
+
+    Rectangle pathButtonDrawRect = {buttonsStartX, buttonsStartY, buttonWidth, buttonHeight};
+    Rectangle towerButtonDrawRect = {buttonsStartX + buttonWidth + buttonSpacing, buttonsStartY, buttonWidth, buttonHeight};
+    Rectangle waveButtonDrawRect = {buttonsStartX + 2 * (buttonWidth + buttonSpacing), buttonsStartY, buttonWidth, buttonHeight};
+
+    DrawTexturePro(editorState.pathButtonTex, (Rectangle){0, 0, (float)editorState.pathButtonTex.width, (float)editorState.pathButtonTex.height},
+                   pathButtonDrawRect, (Vector2){0, 0}, 0.0f, WHITE);
+    DrawTexturePro(editorState.towerButtonTex, (Rectangle){0, 0, (float)editorState.towerButtonTex.width, (float)editorState.towerButtonTex.height},
+                   towerButtonDrawRect, (Vector2){0, 0}, 0.0f, WHITE);
+    DrawTexturePro(editorState.waveButtonTex, (Rectangle){0, 0, (float)editorState.waveButtonTex.width, (float)editorState.waveButtonTex.height},
+                   waveButtonDrawRect, (Vector2){0, 0}, 0.0f, WHITE);
+
+    if (editorState.selectedTool == TOOL_PATH)
+    {
+        DrawRectangleLinesEx(pathButtonDrawRect, 3, BLUE);
+    }
+    else if (editorState.selectedTool == TOOL_TOWER)
+    {
+        DrawRectangleLinesEx(towerButtonDrawRect, 3, BLUE);
+    }
+    else if (editorState.selectedTool == TOOL_WAVE)
+    {
+        DrawRectangleLinesEx(waveButtonDrawRect, 3, BLUE);
+    }
+
+    float saveButtonScale = editorMapScale * 0.25f;
+    float saveButtonTexOriginalWidth = (float)editorState.saveButtonTex.width;
+    float saveButtonTexOriginalHeight = (float)editorState.saveButtonTex.height;
+    float saveButtonDrawWidth = saveButtonTexOriginalWidth * saveButtonScale;
+    float saveButtonDrawHeight = saveButtonTexOriginalHeight * saveButtonScale;
+    float saveButtonMargin = 20.0f;
+    Rectangle saveButtonDrawRect = {
+        screenWidth - saveButtonDrawWidth - saveButtonMargin,
+        screenHeight - saveButtonDrawHeight - saveButtonMargin,
+        saveButtonDrawWidth,
+        saveButtonDrawHeight};
+    DrawTexturePro(editorState.saveButtonTex, (Rectangle){0, 0, saveButtonTexOriginalWidth, saveButtonTexOriginalHeight},
+                   saveButtonDrawRect, (Vector2){0, 0}, 0.0f, WHITE);
+
+    if (editorState.wavePanelActive)
+    {
+    }
 }
