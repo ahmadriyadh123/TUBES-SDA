@@ -61,7 +61,7 @@ typedef struct {
     float waitingForNextWave;
     float lastWaveSpawnTime; 
     float previousWaveSpawnTimeReference;
-    // <--- BARU: Waktu (dari GetTime()) saat gelombang sebelumnya mulai spawn penuh
+    
 } EnemyWave;
 
 extern EnemyWave *currentWave; 
@@ -76,7 +76,7 @@ void Enemies_InitAssets();
 void Enemies_ShutdownAssets();
 void Enemies_Update(EnemyWave *wave, float deltaTime); 
 void Enemies_Draw(const EnemyWave *wave, float globalScale, float offsetX, float offsetY);
-void Enemies_BuildPath(int startX, int startY, EnemyWave* waveToBuild); // <--- UBAH PROTOTIPE
+void Enemies_BuildPath(int startX, int startY, EnemyWave* waveToBuild); 
 
 Vector2 GetEnemyPosition(const Enemy *enemy);
 int GetEnemyHP(const Enemy *enemy);
@@ -95,8 +95,8 @@ void SetEnemyPathIndex(Enemy *enemy, int index);
 
 void InitWaveAssets();
 void ShutdownWaveAssets();
-EnemyWave* CreateWave(int startRow, int startCol); // <--- UBAH PROTOTIPE
-void FreeWave(EnemyWave **wave);                  // <--- UBAH PROTOTIPE
+EnemyWave* CreateWave(int startRow, int startCol); 
+void FreeWave(EnemyWave **wave);                  
 void UpdateWaveTimer(EnemyWave *wave, float deltaTime); 
 bool AllEnemiesInWaveFinished(const EnemyWave *wave);
 void DrawGameTimer(const EnemyWave *wave, float globalScale, float offsetX, float offsetY, int mapRow, int mapCol);

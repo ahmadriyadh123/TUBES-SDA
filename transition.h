@@ -5,4 +5,4 @@
 
 void PlayTransitionAnimation(GameState targetState);
 
-#endif //ANIMTEXT_H
+#endif //TRANSITION_H
