@@ -5,3 +5,5 @@
 *.o
 .vscode/
 Makefile.win
+level_editor.C
+level_editor.h
