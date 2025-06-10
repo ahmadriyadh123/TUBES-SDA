@@ -1,3 +1,7 @@
 *.o
 *.exe
+.md
+.vscode/
+resource/
+main.code-workspace
 Makefile
