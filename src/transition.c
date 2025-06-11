@@ -8,7 +8,7 @@ void PlayTransitionAnimation(GameState targetState) {
     const int screenWidth = GetScreenWidth();
     const int screenHeight = GetScreenHeight();
 
-    Texture2D backgroundTex = LoadTexture("assets/background.jpg"); 
+    Texture2D backgroundTex = LoadTexture("assets/img/mainmenu_imgs/background.jpg"); 
 
     const char* transitionText;
     switch (targetState) {

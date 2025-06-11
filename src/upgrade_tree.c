@@ -35,24 +35,24 @@ UpgradeNode *selectedUpgradeNodeForAgreement = NULL;
 
 void InitUpgradeTree(TowerUpgradeTree* tree, TowerType type) {
     
-    lockedIconTex = LoadTextureSafe("assets/locked.png");
-    unlockedIconTex = LoadTextureSafe("assets/unlocked.png");
-    purchasedIconTex = LoadTextureSafe("assets/purchased.png");
-    excludedIconTex = LoadTextureSafe("assets/excluded.png"); 
+    lockedIconTex = LoadTextureSafe("assets/img/upgrade_imgs/locked.png");
+    unlockedIconTex = LoadTextureSafe("assets/img/upgrade_imgs/unlocked.png");
+    purchasedIconTex = LoadTextureSafe("assets/img/upgrade_imgs/purchased.png");
+    excludedIconTex = LoadTextureSafe("assets/img/upgrade_imgs/excluded.png"); 
     
-    upgradeIcon_AttackSpeedBase = LoadTextureSafe("assets/speed_upgrade.png"); 
-    upgradeIcon_AttackPowerBase = LoadTextureSafe("assets/power_upgrade.png"); 
-    upgradeIcon_SpecialEffectBase = LoadTextureSafe("assets/special_effect.png"); 
-    upgradeIcon_LightningAttack = LoadTextureSafe("assets/flash_upgrade.png"); 
-    upgradeIcon_ChainAttack = LoadTextureSafe("assets/chains_upgrade.png"); 
-    upgradeIcon_AreaAttack = LoadTextureSafe("assets/aoe_upgrade.png"); 
-    upgradeIcon_CriticalAttack = LoadTextureSafe("assets/critical_upgrade.png"); 
-    upgradeIcon_StunEffect = LoadTextureSafe("assets/stun_upgrade.png"); 
-    upgradeIcon_WideChainRange = LoadTextureSafe("assets/chains_upgrade(2).png"); 
-    upgradeIcon_LargeAoERadius = LoadTextureSafe("assets/aoe_upgrade(2).png"); 
-    upgradeIcon_HighCritChance = LoadTextureSafe("assets/critical_upgrade(2).png"); 
-    upgradeIcon_LethalPoison = LoadTextureSafe("assets/poison_upgrade.png"); 
-    upgradeIcon_MassSlow = LoadTextureSafe("assets/slow_upgrade.png"); 
+    upgradeIcon_AttackSpeedBase = LoadTextureSafe("assets/img/upgrade_imgs/speed_upgrade.png"); 
+    upgradeIcon_AttackPowerBase = LoadTextureSafe("assets/img/upgrade_imgs/power_upgrade.png"); 
+    upgradeIcon_SpecialEffectBase = LoadTextureSafe("assets/img/upgrade_imgs/special_effect.png"); 
+    upgradeIcon_LightningAttack = LoadTextureSafe("assets/img/upgrade_imgs/flash_upgrade.png"); 
+    upgradeIcon_ChainAttack = LoadTextureSafe("assets/img/upgrade_imgs/chains_upgrade.png"); 
+    upgradeIcon_AreaAttack = LoadTextureSafe("assets/img/upgrade_imgs/aoe_upgrade.png"); 
+    upgradeIcon_CriticalAttack = LoadTextureSafe("assets/img/upgrade_imgs/critical_upgrade.png"); 
+    upgradeIcon_StunEffect = LoadTextureSafe("assets/img/upgrade_imgs/stun_upgrade.png"); 
+    upgradeIcon_WideChainRange = LoadTextureSafe("assets/img/upgrade_imgs/chains_upgrade(2).png"); 
+    upgradeIcon_LargeAoERadius = LoadTextureSafe("assets/img/upgrade_imgs/aoe_upgrade(2).png"); 
+    upgradeIcon_HighCritChance = LoadTextureSafe("assets/img/upgrade_imgs/critical_upgrade(2).png"); 
+    upgradeIcon_LethalPoison = LoadTextureSafe("assets/img/upgrade_imgs/poison_upgrade.png"); 
+    upgradeIcon_MassSlow = LoadTextureSafe("assets/img/upgrade_imgs/slow_upgrade.png"); 
     TraceLog(LOG_INFO, "Initializing upgrade tree for Tower Type %d", type);    
 
     tree->root = CreateUpgradeNode(UPGRADE_NONE, "Upgrade Tower", "Pilih jalur upgrade", 0, NULL, 0); 

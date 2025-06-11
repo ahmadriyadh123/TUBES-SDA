@@ -23,8 +23,8 @@ static Vector2 path[MAX_PATH_POINTS] = {0};
 static int pathCount = 0;
 
 void InitMapAssets(void) {
-    tileSheetTex = LoadTextureSafe("assets/tilesheet.png");
-    emptyCircleTex = LoadTextureSafe("assets/kosong2.png");
+    tileSheetTex = LoadTextureSafe("assets/img/gameplay_imgs/tilesheet.png");
+    emptyCircleTex = LoadTextureSafe("assets/img/gameplay_imgs/kosong2.png");
     TraceLog(LOG_INFO, "Map assets initialized.");
 }
 

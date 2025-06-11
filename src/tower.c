@@ -33,9 +33,9 @@ void InitShots(void) {
 
 void InitTowerAssets()
 {
-    towerTexture = LoadTextureSafe("assets/tower1.png");
-    deleteButtonTex = LoadTextureSafe("assets/delete_button.png");
-    upgradeButtonTex = LoadTextureSafe("assets/upgrade_button.png");
+    towerTexture = LoadTextureSafe("assets/img/gameplay_imgs/tower1.png");
+    deleteButtonTex = LoadTextureSafe("assets/img/gameplay_imgs/delete_button.png");
+    upgradeButtonTex = LoadTextureSafe("assets/img/gameplay_imgs/upgrade_button.png");
     TraceLog(LOG_INFO, "Tower assets initialized.");
 }
 
