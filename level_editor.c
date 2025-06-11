@@ -123,6 +123,23 @@ void HandleLevelEditorInput(float globalScale, float offsetX, float offsetY)
     Rectangle towerButtonRect = {buttonsStartX + buttonWidth + buttonSpacing, buttonsStartY, buttonWidth, buttonHeight};
     Rectangle waveButtonRect = {buttonsStartX + 2 * (buttonWidth + buttonSpacing), buttonsStartY, buttonWidth, buttonHeight};
 
+    float panelWidth = screenWidth * EDITOR_PANEL_WIDTH_FACTOR;
+    float panelHeight = screenHeight * EDITOR_PANEL_HEIGHT_FACTOR;
+    float panelX = (screenWidth - panelWidth) / 2.0f;
+    float panelY = (screenHeight - panelHeight) / 2.0f;
+    Rectangle panelRect = {panelX, panelY, panelWidth, panelHeight};
+
+    float okButtonWidth = editorState.okButtonTex.width * (EDITOR_WAVE_BUTTON_SIZE / editorState.okButtonTex.height);
+    float okButtonHeight = EDITOR_WAVE_BUTTON_SIZE;
+    Rectangle okButtonRect = {
+        panelX + panelWidth / 2 - okButtonWidth / 2,
+        panelY + panelHeight - EDITOR_PANEL_PADDING - okButtonHeight,
+        okButtonWidth,
+        okButtonHeight};
+
+    Rectangle minusButtonRect = {panelX + EDITOR_PANEL_PADDING, panelY + panelHeight / 2 - EDITOR_WAVE_BUTTON_SIZE / 2, EDITOR_WAVE_BUTTON_SIZE, EDITOR_WAVE_BUTTON_SIZE};
+    Rectangle plusButtonRect = {panelX + panelWidth - EDITOR_PANEL_PADDING - EDITOR_WAVE_BUTTON_SIZE, panelY + panelHeight / 2 - EDITOR_WAVE_BUTTON_SIZE / 2, EDITOR_WAVE_BUTTON_SIZE, EDITOR_WAVE_BUTTON_SIZE};
+
     float saveButtonScale = editorMapScale * 0.25f;
     float saveButtonTexOriginalWidth = (float)editorState.saveButtonTex.width;
     float saveButtonTexOriginalHeight = (float)editorState.saveButtonTex.height;
@@ -138,44 +155,127 @@ void HandleLevelEditorInput(float globalScale, float offsetX, float offsetY)
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
     {
 
-        if (CheckCollisionPointRec(mousePos, pathButtonRect))
-        {
-            SetEditorSelectedTool(TOOL_PATH);
-            SetEditorWavePanelActive(false);
-            editorState.isDraggingPath = false;
-            TraceLog(LOG_INFO, "Editor: Selected PATH tool.");
-            return;
-        }
-        else if (CheckCollisionPointRec(mousePos, towerButtonRect))
-        {
-            SetEditorSelectedTool(TOOL_TOWER);
-            SetEditorWavePanelActive(false);
-            editorState.isDraggingPath = false;
-            TraceLog(LOG_INFO, "Editor: Selected TOWER tool.");
-            return;
-        }
-        else if (CheckCollisionPointRec(mousePos, waveButtonRect))
-        {
-            SetEditorSelectedTool(TOOL_WAVE);
-            SetEditorWavePanelActive(true);
-            editorState.isDraggingPath = false;
-            TraceLog(LOG_INFO, "Editor: Selected WAVE tool. Opening wave panel.");
-            return;
-        }
-
         if (CheckCollisionPointRec(mousePos, saveButtonRect))
         {
             TraceLog(LOG_INFO, "Editor: 'Save and Play' button clicked (stub).");
             editorState.requestSaveAndPlay = true;
             return;
         }
+
+        if (editorState.wavePanelActive)
+        {
+            if (CheckCollisionPointRec(mousePos, okButtonRect))
+            {
+                customWaveCount = editorState.waveCount;
+                editorState.wavePanelActive = false;
+                TraceLog(LOG_INFO, "Editor: Wave count set to %d. Panel closed.", customWaveCount);
+                return;
+            }
+            if (CheckCollisionPointRec(mousePos, minusButtonRect))
+            {
+                if (editorState.waveCount > 1)
+                    editorState.waveCount--;
+                TraceLog(LOG_INFO, "Editor: Wave count decreased to %d.", editorState.waveCount);
+                return;
+            }
+            else if (CheckCollisionPointRec(mousePos, plusButtonRect))
+            {
+                editorState.waveCount++;
+                TraceLog(LOG_INFO, "Editor: Wave count increased to %d.", editorState.waveCount);
+                return;
+            }
+
+            if (CheckCollisionPointRec(mousePos, panelRect))
+            {
+                return;
+            }
+            else
+            {
+                editorState.wavePanelActive = false;
+                TraceLog(LOG_INFO, "Clicked outside wave panel. Closing panel.");
+                return;
+            }
+        }
+
+        if (!editorState.wavePanelActive)
+        {
+            if (CheckCollisionPointRec(mousePos, pathButtonRect))
+            {
+                SetEditorSelectedTool(TOOL_PATH);
+                SetEditorWavePanelActive(false);
+                editorState.isDraggingPath = false;
+                TraceLog(LOG_INFO, "Editor: Selected PATH tool.");
+                return;
+            }
+            else if (CheckCollisionPointRec(mousePos, towerButtonRect))
+            {
+                SetEditorSelectedTool(TOOL_TOWER);
+                SetEditorWavePanelActive(false);
+                editorState.isDraggingPath = false;
+                TraceLog(LOG_INFO, "Editor: Selected TOWER tool.");
+                return;
+            }
+            else if (CheckCollisionPointRec(mousePos, waveButtonRect))
+            {
+                SetEditorSelectedTool(TOOL_WAVE);
+                SetEditorWavePanelActive(true);
+                editorState.isDraggingPath = false;
+                TraceLog(LOG_INFO, "Editor: Selected WAVE tool. Opening wave panel.");
+                return;
+            }
+        }
+
+        if (!editorState.wavePanelActive)
+        {
+            int col = (int)((mousePos.x - editorMapOffsetX) / tileScreenSize);
+            int row = (int)((mousePos.y - editorMapOffsetY) / tileScreenSize);
+
+            if (row >= 0 && row < MAP_ROWS && col >= 0 && col < MAP_COLS)
+            {
+                int currentTileValue = GetEditorMapTile(row, col);
+
+                if (editorState.selectedTool == TOOL_PATH)
+                {
+                    SetEditorMapTile(row, col, (currentTileValue == 37) ? 0 : 37);
+                    if (GetEditorMapTile(row, col) == 37)
+                    {
+                        editorState.isDraggingPath = true;
+                        TraceLog(LOG_INFO, "Editor: Path tile (%d,%d) toggled to 37. Starting drag.", row, col);
+                    }
+                    else
+                    {
+                        editorState.isDraggingPath = false;
+                        TraceLog(LOG_INFO, "Editor: Path tile (%d,%d) toggled to 0. Dragging disabled.", row, col);
+                    }
+                    return;
+                }
+                else if (editorState.selectedTool == TOOL_TOWER)
+                {
+                    SetEditorMapTile(row, col, (currentTileValue == 4) ? 0 : 4);
+                    TraceLog(LOG_INFO, "Editor: Tower tile at (%d, %d) toggled to %d.", row, col, GetEditorMapTile(row, col));
+                    return;
+                }
+            }
+        }
     }
 
-    if (editorState.wavePanelActive)
+    if (!editorState.wavePanelActive && editorState.selectedTool == TOOL_PATH && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && editorState.isDraggingPath)
     {
+        int col = (int)((mousePos.x - editorMapOffsetX) / tileScreenSize);
+        int row = (int)((mousePos.y - editorMapOffsetY) / tileScreenSize);
+        if (row >= 0 && row < MAP_ROWS && col >= 0 && col < MAP_COLS)
+        {
+            int targetTileValue = GetEditorMapTile(row, col);
+            if (targetTileValue != 4 && targetTileValue != 5 && targetTileValue != 6)
+            {
+                SetEditorMapTile(row, col, 37);
+            }
+        }
     }
-    else
+
+    if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
     {
+        editorState.isDraggingPath = false;
     }
 }
 void DrawLevelEditor(float globalScale, float offsetX, float offsetY)
@@ -270,7 +370,187 @@ void DrawLevelEditor(float globalScale, float offsetX, float offsetY)
     DrawTexturePro(editorState.saveButtonTex, (Rectangle){0, 0, saveButtonTexOriginalWidth, saveButtonTexOriginalHeight},
                    saveButtonDrawRect, (Vector2){0, 0}, 0.0f, WHITE);
 
-    if (editorState.wavePanelActive)
+    void HandleLevelEditorInput(float globalScale, float offsetX, float offsetY)
     {
+        Vector2 mousePos = GetMousePosition();
+        float screenWidth = (float)GetScreenWidth();
+        float screenHeight = (float)GetScreenHeight();
+
+        float availableWidth = screenWidth * (1.0f - 2 * EDITOR_VIEW_PADDING_SIDE_FACTOR);
+        float availableHeight = screenHeight * (1.0f - EDITOR_VIEW_PADDING_TOP_FACTOR - EDITOR_VIEW_PADDING_BOTTOM_FACTOR);
+        float baseMapWidth = MAP_COLS * TILE_SIZE;
+        float baseMapHeight = MAP_ROWS * TILE_SIZE;
+        float editorMapScale = fmin(availableWidth / baseMapWidth, availableHeight / baseMapHeight);
+        float editorMapDisplayWidth = baseMapWidth * editorMapScale;
+        float editorMapDisplayHeight = baseMapHeight * editorMapScale;
+        float editorMapOffsetX = screenWidth * EDITOR_VIEW_PADDING_SIDE_FACTOR + (availableWidth - editorMapDisplayWidth) / 2.0f;
+        float editorMapOffsetY = screenHeight * EDITOR_VIEW_PADDING_TOP_FACTOR + (availableHeight - editorMapDisplayHeight) / 2.0f;
+        float tileScreenSize = TILE_SIZE * editorMapScale;
+
+        float buttonWidth = TILE_SIZE * editorMapScale * EDITOR_BUTTON_WIDTH_FACTOR;
+        float buttonHeight = TILE_SIZE * editorMapScale * EDITOR_BUTTON_HEIGHT_FACTOR;
+        float buttonSpacing = TILE_SIZE * editorMapScale * EDITOR_BUTTON_SPACING_FACTOR;
+        float buttonsGroupWidth = (buttonWidth * 3 + buttonSpacing * 2);
+        float buttonsStartX = screenWidth / 2.0f - buttonsGroupWidth / 2.0f;
+        float buttonsStartY = editorMapOffsetY + editorMapDisplayHeight + 20.0f * editorMapScale;
+
+        Rectangle pathButtonRect = {buttonsStartX, buttonsStartY, buttonWidth, buttonHeight};
+        Rectangle towerButtonRect = {buttonsStartX + buttonWidth + buttonSpacing, buttonsStartY, buttonWidth, buttonHeight};
+        Rectangle waveButtonRect = {buttonsStartX + 2 * (buttonWidth + buttonSpacing), buttonsStartY, buttonWidth, buttonHeight};
+
+        float panelWidth = screenWidth * EDITOR_PANEL_WIDTH_FACTOR;
+        float panelHeight = screenHeight * EDITOR_PANEL_HEIGHT_FACTOR;
+        float panelX = (screenWidth - panelWidth) / 2.0f;
+        float panelY = (screenHeight - panelHeight) / 2.0f;
+        Rectangle panelRect = {panelX, panelY, panelWidth, panelHeight};
+
+        float okButtonWidth = editorState.okButtonTex.width * (EDITOR_WAVE_BUTTON_SIZE / editorState.okButtonTex.height);
+        float okButtonHeight = EDITOR_WAVE_BUTTON_SIZE;
+        Rectangle okButtonRect = {
+            panelX + panelWidth / 2 - okButtonWidth / 2,
+            panelY + panelHeight - EDITOR_PANEL_PADDING - okButtonHeight,
+            okButtonWidth,
+            okButtonHeight};
+
+        Rectangle minusButtonRect = {panelX + EDITOR_PANEL_PADDING, panelY + panelHeight / 2 - EDITOR_WAVE_BUTTON_SIZE / 2, EDITOR_WAVE_BUTTON_SIZE, EDITOR_WAVE_BUTTON_SIZE};
+        Rectangle plusButtonRect = {panelX + panelWidth - EDITOR_PANEL_PADDING - EDITOR_WAVE_BUTTON_SIZE, panelY + panelHeight / 2 - EDITOR_WAVE_BUTTON_SIZE / 2, EDITOR_WAVE_BUTTON_SIZE, EDITOR_WAVE_BUTTON_SIZE};
+
+        float saveButtonScale = editorMapScale * 0.25f;
+        float saveButtonTexOriginalWidth = (float)editorState.saveButtonTex.width;
+        float saveButtonTexOriginalHeight = (float)editorState.saveButtonTex.height;
+        float saveButtonDrawWidth = saveButtonTexOriginalWidth * saveButtonScale;
+        float saveButtonDrawHeight = saveButtonTexOriginalHeight * saveButtonScale;
+        float saveButtonMargin = 20.0f;
+        Rectangle saveButtonRect = {
+            screenWidth - saveButtonDrawWidth - saveButtonMargin,
+            screenHeight - saveButtonDrawHeight - saveButtonMargin,
+            saveButtonDrawWidth,
+            saveButtonDrawHeight};
+
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        {
+
+            if (CheckCollisionPointRec(mousePos, saveButtonRect))
+            {
+                TraceLog(LOG_INFO, "Editor: 'Save and Play' button clicked (stub).");
+                editorState.requestSaveAndPlay = true;
+                return;
+            }
+
+            if (editorState.wavePanelActive)
+            {
+                if (CheckCollisionPointRec(mousePos, okButtonRect))
+                {
+                    customWaveCount = editorState.waveCount;
+                    editorState.wavePanelActive = false;
+                    TraceLog(LOG_INFO, "Editor: Wave count set to %d. Panel closed.", customWaveCount);
+                    return;
+                }
+                if (CheckCollisionPointRec(mousePos, minusButtonRect))
+                {
+                    if (editorState.waveCount > 1)
+                        editorState.waveCount--;
+                    TraceLog(LOG_INFO, "Editor: Wave count decreased to %d.", editorState.waveCount);
+                    return;
+                }
+                else if (CheckCollisionPointRec(mousePos, plusButtonRect))
+                {
+                    editorState.waveCount++;
+                    TraceLog(LOG_INFO, "Editor: Wave count increased to %d.", editorState.waveCount);
+                    return;
+                }
+
+                if (CheckCollisionPointRec(mousePos, panelRect))
+                {
+                    return;
+                }
+                else
+                {
+                    editorState.wavePanelActive = false;
+                    TraceLog(LOG_INFO, "Clicked outside wave panel. Closing panel.");
+                    return;
+                }
+            }
+
+            if (!editorState.wavePanelActive)
+            {
+                if (CheckCollisionPointRec(mousePos, pathButtonRect))
+                {
+                    SetEditorSelectedTool(TOOL_PATH);
+                    SetEditorWavePanelActive(false);
+                    editorState.isDraggingPath = false;
+                    TraceLog(LOG_INFO, "Editor: Selected PATH tool.");
+                    return;
+                }
+                else if (CheckCollisionPointRec(mousePos, towerButtonRect))
+                {
+                    SetEditorSelectedTool(TOOL_TOWER);
+                    SetEditorWavePanelActive(false);
+                    editorState.isDraggingPath = false;
+                    TraceLog(LOG_INFO, "Editor: Selected TOWER tool.");
+                    return;
+                }
+                else if (CheckCollisionPointRec(mousePos, waveButtonRect))
+                {
+                    SetEditorSelectedTool(TOOL_WAVE);
+                    SetEditorWavePanelActive(true);
+                    editorState.isDraggingPath = false;
+                    TraceLog(LOG_INFO, "Editor: Selected WAVE tool. Opening wave panel.");
+                    return;
+                }
+            }
+
+            if (!editorState.wavePanelActive)
+            {
+                int col = (int)((mousePos.x - editorMapOffsetX) / tileScreenSize);
+                int row = (int)((mousePos.y - editorMapOffsetY) / tileScreenSize);
+
+                if (row >= 0 && row < MAP_ROWS && col >= 0 && col < MAP_COLS)
+                {
+                    int currentTileValue = GetEditorMapTile(row, col);
+
+                    if (editorState.selectedTool == TOOL_PATH)
+                    {
+                        SetEditorMapTile(row, col, (currentTileValue == 37) ? 0 : 37);
+                        if (GetEditorMapTile(row, col) == 37)
+                        {
+                            editorState.isDraggingPath = true;
+                            TraceLog(LOG_INFO, "Editor: Path tile (%d,%d) toggled to 37. Starting drag.", row, col);
+                        }
+                        else
+                        {
+                            editorState.isDraggingPath = false;
+                            TraceLog(LOG_INFO, "Editor: Path tile (%d,%d) toggled to 0. Dragging disabled.", row, col);
+                        }
+                        return;
+                    }
+                    else if (editorState.selectedTool == TOOL_TOWER)
+                    {
+                        SetEditorMapTile(row, col, (currentTileValue == 4) ? 0 : 4);
+                        TraceLog(LOG_INFO, "Editor: Tower tile at (%d, %d) toggled to %d.", row, col, GetEditorMapTile(row, col));
+                        return;
+                    }
+                }
+            }
+        }
+
+        if (!editorState.wavePanelActive && editorState.selectedTool == TOOL_PATH && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && editorState.isDraggingPath)
+        {
+            int col = (int)((mousePos.x - editorMapOffsetX) / tileScreenSize);
+            int row = (int)((mousePos.y - editorMapOffsetY) / tileScreenSize);
+            if (row >= 0 && row < MAP_ROWS && col >= 0 && col < MAP_COLS)
+            {
+                int targetTileValue = GetEditorMapTile(row, col);
+                if (targetTileValue != 4 && targetTileValue != 5 && targetTileValue != 6)
+                {
+                    SetEditorMapTile(row, col, 37);
+                }
+            }
+        }
+
+        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+        {
+            editorState.isDraggingPath = false;
+        }
     }
 }
