@@ -14,6 +14,8 @@
 #define SPAWN_DELAY 1.5f 
 #define INTER_WAVE_DELAY 3.0f
 
+typedef struct EnemyWave EnemyWave;
+
 typedef struct {
     Texture2D texture;
     int frameCols;        
@@ -27,6 +29,7 @@ typedef struct {
 } AnimSprite;
 
 typedef struct {    
+    AnimSprite animData; 
     Vector2 position;
     int hp;
     float speed;
@@ -35,45 +38,90 @@ typedef struct {
     int pathIndex;
     int segment;        
     float t;  
-    AnimSprite animData; 
     int spriteType;     
-    float drawScale;     
+    float drawScale;   
+    int waveNum;
+    EnemyWave* parentWave; // Sekarang ini valid dan konsisten
 } Enemy;
 
-typedef struct {
+typedef struct EnemyQueueNode {
+    Enemy enemy;
+    struct EnemyQueueNode *next;
+} EnemyQueueNode;
+
+typedef struct EnemyQueue {
+    EnemyQueueNode *front; 
+    EnemyQueueNode *rear;  
+    int count;             
+} EnemyQueue;
+
+struct EnemyWave {
+    EnemyQueue enemyQueue; 
+    Enemy *activeEnemies;  
+    int maxActiveEnemies;  
+    int currentActiveCount;
     Enemy *allEnemies; 
+    int activeCount;
+    
+    Texture2D timerTexture; 
     Vector2 path[MAX_PATH_POINTS];
     int pathCount;
-    int total;
-    int activeCount;
-    int spawnedCount;      
-    int nextSpawnIndex;    
-    float spawnTimer;      
     int waveNum;
+
+    int enemiesToSpawnInThisWave; 
+    float spawnTimer;      
+    int spawnedCount;
+    
+    int nextSpawnIndex;    
     float timerCurrentTime;
     float timerDuration;
     bool timerVisible;
     bool active;
+    float lastWaveSpawnTime; 
     int timerMapRow;
     int timerMapCol;
-    Texture2D timerTexture; 
     float interWaveTimer;
     float waitingForNextWave;
-    float lastWaveSpawnTime; 
     float previousWaveSpawnTimeReference;
-    // <--- BARU: Waktu (dari GetTime()) saat gelombang sebelumnya mulai spawn penuh
-} EnemyWave;
+};
 
-extern EnemyWave *currentWave; 
+typedef struct WaveQueueNode {
+    EnemyWave *wave; 
+    struct WaveQueueNode *next;
+} WaveQueueNode;
+
+typedef struct WaveQueue {
+    WaveQueueNode *front; 
+    WaveQueueNode *rear;  
+    int count;             
+} WaveQueue;
+
+extern WaveQueue incomingWaves;     
+extern Enemy *allActiveEnemies; 
+extern int maxTotalActiveEnemies;   
+extern int totalActiveEnemiesCount;
 extern int currentWaveNum;
+
+void Enemies_InitAssets();
+void Enemies_ShutdownAssets();
+
+void InitEnemyQueue(EnemyQueue *q);
+void EnqueueEnemy(EnemyQueue *q, Enemy enemy);
+bool DequeueEnemy(EnemyQueue *q, Enemy *enemy); 
+bool IsEnemyQueueEmpty(EnemyQueue *q);
+void ClearEnemyQueue(EnemyQueue *q);
+
+void InitWaveQueue(WaveQueue *q);
+void EnqueueWave(WaveQueue *q, EnemyWave *wave);
+EnemyWave* DequeueWave(WaveQueue *q); 
+bool IsWaveQueueEmpty(WaveQueue *q);
+void ClearWaveQueue(WaveQueue *q);
 
 AnimSprite LoadAnimSprite(const char *filename, int cols, int speed, int frameCount);
 void UpdateAnimSprite(AnimSprite *sprite);
 void DrawAnimSprite(const AnimSprite *sprite, Vector2 position, float scale, Color tint);
 void UnloadAnimSprite(AnimSprite *sprite);
 
-void Enemies_InitAssets();
-void Enemies_ShutdownAssets();
 void Enemies_Update(EnemyWave *wave, float deltaTime); 
 void Enemies_Draw(const EnemyWave *wave, float globalScale, float offsetX, float offsetY);
 void Enemies_BuildPath(int startX, int startY, EnemyWave* waveToBuild); // <--- UBAH PROTOTIPE
