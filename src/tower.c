@@ -6,6 +6,7 @@
 #include "enemy.h"
 #include "upgrade_tree.h"
 #include "player_resources.h"
+#include "status.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <math.h>
@@ -102,9 +103,6 @@ bool IsTowerSelectionUIVisible(void) {
 }
 
 Rectangle GetOrbitButtonRect(Vector2 orbitCenter, float orbitRadius, int buttonIndex, int totalButtons, float buttonScale, Texture2D buttonTexture) {
-    
-    
-    
     float angleStep = 360.0f / totalButtons;
     float currentAngle = (float)buttonIndex * angleStep - 45.0f; 
 
@@ -179,6 +177,7 @@ void PlaceTower(int row, int col, TowerType type)
 
     AddMoney(-50);
     SetMapTile(row, col, 7);
+    Push(&statusStack, "Tower placed successfully."); // <-- BARU
     TraceLog(LOG_INFO, "Tower placed at (%d, %d). Money: $%d.", row, col, GetMoney());
     HideTowerOrbitUI();
 }
@@ -215,6 +214,7 @@ void RemoveTower(Tower *towerToRemove)
     SetMapTile(current->row, current->col, 4);
 
     free(current);
+    Push(&statusStack, "Tower sold for +25 gold."); 
     TraceLog(LOG_INFO, "Tower removed from map at (%d, %d).", towerToRemove->row, towerToRemove->col);
     HideTowerOrbitUI();
 }
@@ -263,7 +263,7 @@ void UpdateTowerAttacks(EnemyWave *wave, float deltaTime)
             continue;
         }
 
-        for (int j = 0; j < GetWaveTotal(wave); j++)
+        for (int j = 0; j < maxTotalActiveEnemies; j++) // Iterasi array global
         {
             Enemy *enemy = &wave->allEnemies[j];
             if (!GetEnemyActive(enemy) || !GetEnemySpawned(enemy))
@@ -292,20 +292,6 @@ void UpdateTowerAttacks(EnemyWave *wave, float deltaTime)
 
 void DrawTowers(float globalScale, float offsetX, float offsetY)
 {
-    if (currentGameState == GAMEPLAY && IsTowerOrbitUIVisible() && selectedTowerForDeletion != NULL) { 
-        Vector2 orbitCenter = towerSelectionUIPos;
-        float orbitRadius = TILE_SIZE * globalScale * ORBIT_RADIUS_TILE_FACTOR;
-        
-        DrawCircleLines((int)orbitCenter.x, (int)orbitCenter.y, orbitRadius, RAYWHITE);
-        
-        
-        Rectangle deleteBtnRect = GetOrbitButtonRect(orbitCenter, orbitRadius, 0, 2, ORBIT_BUTTON_DRAW_SCALE, deleteButtonTex);
-        DrawTexturePro(deleteButtonTex, (Rectangle){0,0,(float)deleteButtonTex.width,(float)deleteButtonTex.height}, deleteBtnRect, (Vector2){0,0}, 0.0f, WHITE);
-        
-        
-        Rectangle upgradeBtnRect = GetOrbitButtonRect(orbitCenter, orbitRadius, 1, 2, ORBIT_BUTTON_DRAW_SCALE, upgradeButtonTex);
-        DrawTexturePro(upgradeButtonTex, (Rectangle){0,0,(float)upgradeButtonTex.width,(float)upgradeButtonTex.height}, upgradeBtnRect, (Vector2){0,0}, 0.0f, WHITE);
-    }
     Tower *current = towersListHead;
     while (current != NULL)
     {
@@ -338,6 +324,20 @@ void DrawTowers(float globalScale, float offsetX, float offsetY)
                        (Vector2){0, 0}, 0.0f, WHITE);
 
         current = (Tower *)current->next;
+    }
+    if (IsTowerOrbitUIVisible() && selectedTowerForDeletion != NULL && GetCurrentOrbitParentNode() == NULL) { 
+        Vector2 orbitCenter = towerSelectionUIPos;
+        float orbitRadius = TILE_SIZE * globalScale * ORBIT_RADIUS_TILE_FACTOR;
+        
+        DrawCircleLines((int)orbitCenter.x, (int)orbitCenter.y, orbitRadius, RAYWHITE);
+        
+        // Gambar Tombol Jual (Delete)
+        Rectangle deleteBtnRect = GetOrbitButtonRect(orbitCenter, orbitRadius, 0, 2, ORBIT_BUTTON_DRAW_SCALE, deleteButtonTex);
+        DrawTexturePro(deleteButtonTex, (Rectangle){0,0,(float)deleteButtonTex.width,(float)deleteButtonTex.height}, deleteBtnRect, (Vector2){0,0}, 0.0f, WHITE);
+        
+        // Gambar Tombol Upgrade
+        Rectangle upgradeBtnRect = GetOrbitButtonRect(orbitCenter, orbitRadius, 1, 2, ORBIT_BUTTON_DRAW_SCALE, upgradeButtonTex);
+        DrawTexturePro(upgradeButtonTex, (Rectangle){0,0,(float)upgradeButtonTex.width,(float)upgradeButtonTex.height}, upgradeBtnRect, (Vector2){0,0}, 0.0f, WHITE);
     }
 }
 
