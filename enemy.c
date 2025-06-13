@@ -16,6 +16,123 @@ static int dx_path[] = {0, 1, 0, -1};
 static int dy_path[] = {-1, 0, 1, 0};
 
 EnemyWave *currentWave = NULL;
+WaveQueue incomingWaves; 
+Enemy *allActiveEnemies = NULL;  
+int maxTotalActiveEnemies = 200; 
+int totalActiveEnemiesCount = 0; 
+
+void InitEnemyQueue(EnemyQueue *q) {
+    q->front = NULL;
+    q->rear = NULL;
+    q->count = 0;
+}
+
+void InitWaveQueue(WaveQueue *q) {
+    q->front = NULL;
+    q->rear = NULL;
+    q->count = 0;
+}
+void EnqueueEnemy(EnemyQueue *q, Enemy enemy) {
+    EnemyQueueNode *newNode = (EnemyQueueNode*)malloc(sizeof(EnemyQueueNode));
+    if (newNode == NULL) {
+        TraceLog(LOG_ERROR, "Failed to allocate new EnemyQueueNode.");
+        return;
+    }
+    newNode->enemy = enemy;
+    newNode->next = NULL;
+
+    if (q->rear == NULL) { 
+        q->front = newNode;
+        q->rear = newNode;
+    } else {
+        q->rear->next = newNode;
+        q->rear = newNode;
+    }
+    q->count++;
+}
+void EnqueueWave(WaveQueue *q, EnemyWave *wave) {
+    WaveQueueNode *newNode = (WaveQueueNode*)malloc(sizeof(WaveQueueNode));
+    if (newNode == NULL) {
+        TraceLog(LOG_ERROR, "Failed to allocate new WaveQueueNode.");
+        return;
+    }
+    newNode->wave = wave;
+    newNode->next = NULL;
+
+    if (q->rear == NULL) { 
+        q->front = newNode;
+        q->rear = newNode;
+    } else {
+        q->rear->next = newNode;
+        q->rear = newNode;
+    }
+    q->count++;
+    TraceLog(LOG_INFO, "Wave %d enqueued. Total waves in queue: %d", wave->waveNum, q->count);
+}
+
+bool DequeueEnemy(EnemyQueue *q, Enemy *enemy) {
+    if (q->front == NULL) { 
+        return false;
+    }
+    EnemyQueueNode *temp = q->front;
+    *enemy = temp->enemy; 
+    q->front = q->front->next;
+
+    if (q->front == NULL) { 
+        q->rear = NULL;
+    }
+    free(temp);
+    q->count--;
+    return true;
+}
+EnemyWave* DequeueWave(WaveQueue *q) {
+    if (q->front == NULL) { 
+        return NULL;
+    }
+    WaveQueueNode *temp = q->front;
+    EnemyWave *dequeuedWave = temp->wave;
+    q->front = q->front->next;
+
+    if (q->front == NULL) { 
+        q->rear = NULL;
+    }
+    free(temp);
+    q->count--;
+    TraceLog(LOG_INFO, "Wave %d dequeued. Total waves in queue: %d", dequeuedWave->waveNum, q->count);
+    return dequeuedWave;
+}
+
+bool IsEnemyQueueEmpty(EnemyQueue *q) {
+    return q->front == NULL;
+}
+bool IsWaveQueueEmpty(WaveQueue *q) {
+    return q->front == NULL;
+}
+
+void ClearEnemyQueue(EnemyQueue *q) {
+    EnemyQueueNode *current = q->front;
+    while (current != NULL) {
+        EnemyQueueNode *next = current->next;
+        free(current);
+        current = next;
+    }
+    q->front = NULL;
+    q->rear = NULL;
+    q->count = 0;
+}
+void ClearWaveQueue(WaveQueue *q) {
+    WaveQueueNode *current = q->front;
+    while (current != NULL) {
+        WaveQueueNode *next = current->next;
+        FreeWave(&current->wave); 
+        free(current);
+        current = next;
+    }
+    q->front = NULL;
+    q->rear = NULL;
+    q->count = 0;
+    TraceLog(LOG_INFO, "WaveQueue cleared.");
+}
 
 AnimSprite LoadAnimSprite(const char *filename, int cols, int speed, int frameCount) {
     AnimSprite sprite = {0};
