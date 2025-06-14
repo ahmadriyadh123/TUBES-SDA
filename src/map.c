@@ -4,6 +4,7 @@
 * menyediakan fungsi untuk memuat/membongkar tekstur, menggambar peta game, dan mengelola data ubin dan titik jalur.
 *
 * Penulis: Ahmad Riyadh Almaliki
+* Perubahan terakhir : Senin, 9 Juni 2025
 */
 
 #include "map.h"

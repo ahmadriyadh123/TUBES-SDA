@@ -1,3 +1,10 @@
+/* File        : transition.c 
+* Deskripsi   : Implementasi untuk modul Transisi (Transition). 
+* Berisi semua logika untuk menggambar dan menganimasikan efek visual,
+* seperti pintu geser dan teks yang bergerak, saat terjadi pergantian state.
+* Dibuat oleh  : Ahmad Riyadh Almaliki
+* Perubahan terakhir : Sabtu, 30 Mei 2025
+*/
 
 #include "raylib.h"
 #include "transition.h"
