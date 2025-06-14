@@ -5,7 +5,9 @@
 #include "utils.h"
 
 Music regularBacksound;
+Music battleBacksound;
 bool isRegularPlaying = false;
+bool isBattlePlaying = false;
 
 void InitGameAudio()
 {
@@ -13,8 +15,11 @@ void InitGameAudio()
 
     // Gunakan wrapper 'Safe' untuk keamanan
     regularBacksound = LoadMusicStreamSafe("assets/audio/regular.wav");
+    battleBacksound = LoadMusicStreamSafe("assets/audio/battle.wav");
 
     if (regularBacksound.stream.buffer != NULL) SetMusicVolume(regularBacksound, 1.0f);
+    if (battleBacksound.stream.buffer != NULL) SetMusicVolume(battleBacksound, 1.0f);
+    
     TraceLog(LOG_INFO, "AUDIO: Game audio initialized.");
 }
 
@@ -23,6 +28,9 @@ void UpdateGameAudio()
     // Cukup update stream yang sedang berjalan
     if (isRegularPlaying && regularBacksound.stream.buffer != NULL) {
         UpdateMusicStream(regularBacksound);
+    }
+    if (isBattlePlaying && battleBacksound.stream.buffer != NULL) {
+        UpdateMusicStream(battleBacksound);
     }
 }
 
@@ -67,6 +75,22 @@ void PlayRegularMusic()
     }
 }
 
+void PlayBattleMusic()
+{
+    if (battleBacksound.stream.buffer != NULL && !IsMusicStreamPlaying(battleBacksound))
+    {
+        StopAllMusicExcept(battleBacksound);
+        PlayMusicStream(battleBacksound);
+        isBattlePlaying = true;
+        isRegularPlaying = false;
+        TraceLog(LOG_INFO, "AUDIO: Playing battle music.");
+    }
+}
+
 bool IsRegularMusicPlaying() {
     return isRegularPlaying;
+}
+
+bool IsBattleMusicPlaying() {
+    return isBattlePlaying;
 }
