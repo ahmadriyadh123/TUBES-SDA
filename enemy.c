@@ -21,6 +21,31 @@ Enemy *allActiveEnemies = NULL;
 int maxTotalActiveEnemies = 200; 
 int totalActiveEnemiesCount = 0; 
 
+void Enemies_InitAssets() {
+    enemy1_anim_data = LoadAnimSprite("assets/enemy1.png",7,10,7);
+    enemy2_anim_data = LoadAnimSprite("assets/enemy2.png",4,12,4);
+
+    allActiveEnemies = (Enemy*)calloc(maxTotalActiveEnemies, sizeof(Enemy));
+    if (allActiveEnemies == NULL) {
+        TraceLog(LOG_FATAL, "Failed to allocate allActiveEnemies array.");
+    }
+    totalActiveEnemiesCount = 0;
+    InitWaveQueue(&incomingWaves);
+    TraceLog(LOG_INFO, "Enemy assets initialized. Max active enemies: %d", maxTotalActiveEnemies);
+}
+
+void Enemies_ShutdownAssets()
+{
+    UnloadAnimSprite(&enemy1_anim_data);
+    UnloadAnimSprite(&enemy2_anim_data);
+    if (allActiveEnemies) {
+        free(allActiveEnemies);
+        allActiveEnemies = NULL;
+    }
+    ClearWaveQueue(&incomingWaves); 
+    TraceLog(LOG_INFO, "Enemy assets unloaded.");
+}
+
 void InitEnemyQueue(EnemyQueue *q) {
     q->front = NULL;
     q->rear = NULL;
@@ -160,13 +185,11 @@ AnimSprite LoadAnimSprite(const char *filename, int cols, int speed, int frameCo
         TraceLog(LOG_WARNING, "LoadAnimSprite: 'cols' parameter is 0, assuming 1 column for %s.", filename);
     }
 
-    // Karena asumsi gambar hanya 1 baris, tinggi frame adalah tinggi total tekstur
     sprite.frameHeight = sprite.texture.height; 
     
-    // Hitung Rectangle sumber untuk frame awal (frame 0 di baris 0)
     sprite.frameRec = (Rectangle){
         0.0f,
-        0.0f, // frameRec.y sekarang selalu 0
+        0.0f,
         (float)sprite.frameWidth,
         (float)sprite.frameHeight
     };
@@ -260,14 +283,14 @@ static void BuildPathDFS_Internal(int x, int y, bool visited[MAP_ROWS][MAP_COLS]
     }
 }
 
-void Enemies_BuildPath(int startX, int startY, EnemyWave* waveToBuild) { // <--- UBAH DEFINISI
+void Enemies_BuildPath(int startX, int startY, EnemyWave* waveToBuild) { 
     bool visited[MAP_ROWS][MAP_COLS];
     for (int r = 0; r < MAP_ROWS; r++) {
         for (int c = 0; c < MAP_COLS; c++) {
             visited[r][c] = false;
         }
     }
-    waveToBuild->pathCount = 0; // Akses anggota menggunakan ->
+    waveToBuild->pathCount = 0; 
 
     TraceLog(LOG_DEBUG, "Attempting to build path for wave %d from (%d, %d). Tile value: %d", 
              waveToBuild->waveNum, startX, startY, GetMapTile(startY, startX));
@@ -275,8 +298,7 @@ void Enemies_BuildPath(int startX, int startY, EnemyWave* waveToBuild) { // <---
     if (startX >= 0 && startX < MAP_COLS && startY >= 0 && startY < MAP_ROWS &&
         IsPathTile(startY, startX)) {
 
-        // BuildPathDFS_Internal masih menggunakan array statis, perlu diadaptasi jika ingin berbeda per wave
-        // Untuk saat ini, asumsikan ini mengisi waveToBuild->path
+
         BuildPathDFS_Internal(startX, startY, visited, waveToBuild->path, &waveToBuild->pathCount);
 
         TraceLog(LOG_INFO, "Enemy path built for wave %d. Points: %d. Start: (%d, %d).", 
@@ -289,131 +311,113 @@ void Enemies_BuildPath(int startX, int startY, EnemyWave* waveToBuild) { // <---
     }
 }
 
-void Enemies_InitAssets() {
-    enemy1_anim_data = LoadAnimSprite("assets/enemy1.png",7,10,7);
-    enemy2_anim_data = LoadAnimSprite("assets/enemy2.png",4,12,4);
-    TraceLog(LOG_INFO, "Enemy assets loaded.");
-}
+Enemy* FindNextChainTarget(Enemy* currentTarget, Enemy* excludedTargets[], int excludedCount, float range) {
+    Enemy* bestTarget = NULL;
+    float minDistance = range;
 
-void Enemies_ShutdownAssets()
-{
-    UnloadAnimSprite(&enemy1_anim_data);
-    UnloadAnimSprite(&enemy2_anim_data);
-    TraceLog(LOG_INFO, "Enemy assets unloaded.");
-}
+    for (int i = 0; i < maxTotalActiveEnemies; i++) {
+        Enemy* potentialTarget = &allActiveEnemies[i];
+        if (!potentialTarget->active) continue;
 
-void Enemies_Update(EnemyWave *wave, float deltaTime)
-{
-    if (!wave || !wave->allEnemies || wave->pathCount < 2)
-    {
-        if (wave && wave->pathCount < 2)
-        {
-            TraceLog(LOG_DEBUG, "[UPDATE] Wave %d: Path too short (%d points). Skipping update.", wave->waveNum, wave->pathCount);
-        }
-        return;
-    }
-
-    if (wave->nextSpawnIndex < wave->total)
-    {
-        wave->spawnTimer += deltaTime;
-
-        if (wave->spawnTimer >= SPAWN_DELAY)
-        {
-            Enemy *e = &wave->allEnemies[wave->nextSpawnIndex];
-
-            if (e->spawned == false)
-            {
-                e->active = true;
-                e->spawned = true;
-                e->position = wave->path[0];
-                e->segment = 0;
-                e->t = 0.0f;
-                wave->spawnedCount++;
-                wave->activeCount++;
+        bool isExcluded = false;
+        for (int j = 0; j < excludedCount; j++) {
+            if (potentialTarget == excludedTargets[j]) {
+                isExcluded = true;
+                break;
             }
+        }
 
-            wave->nextSpawnIndex++;
-            wave->spawnTimer = 0.0f;
+        if (!isExcluded) {
+            float distance = Vector2Distance(GetEnemyPosition(currentTarget), GetEnemyPosition(potentialTarget));
+            if (distance < minDistance) {
+                minDistance = distance;
+                bestTarget = potentialTarget;
+            }
         }
     }
+    return bestTarget;
+}
 
-    for (int i = 0; i < wave->total; i++)
-    {
-        Enemy *e = &wave->allEnemies[i];
+void Enemies_Update(float deltaTime)
+{
+    for (int i = 0; i < maxTotalActiveEnemies; i++) { 
+        Enemy *e = &allActiveEnemies[i];
 
-        if (!e->active || !e->spawned)
-            continue;
-
+        if (!e->active) continue;
+       
+        if (e->isStunned) {
+            e->stunTimer -= deltaTime;
+            if (e->stunTimer <= 0) {
+                e->isStunned = false;
+            } else {
+                UpdateAnimSprite(&e->animData); 
+                continue; 
+            }
+        }
         UpdateAnimSprite(&e->animData);
+        
+        if (!e->parentWave || e->parentWave->pathCount < 2) {
+            continue; 
+        }
 
+        bool isDefeated = false;
+        bool reachedEnd = false;
+        
         int s = e->segment;
-
-        if (s < wave->pathCount - 1)
-        {
-            Vector2 startPoint = wave->path[s];
-            Vector2 endPoint = wave->path[s + 1];
+        if (s < e->parentWave->pathCount - 1) {
+            Vector2 startPoint = e->parentWave->path[s];
+            Vector2 endPoint = e->parentWave->path[s + 1];
             float segmentLength = Vector2Distance(startPoint, endPoint);
 
-            if (segmentLength > 0)
-            {
+            if (segmentLength > 0) {
                 e->t += (e->speed * deltaTime) / segmentLength;
-            }
-            else
-            {
+            } else {
                 e->t = 1.0f;
             }
 
-            if (e->t >= 1.0f)
-            {
+            if (e->t >= 1.0f) {
                 e->segment++;
                 s = e->segment;
                 e->t = fmod(e->t, 1.0f);
-
-                if (s >= wave->pathCount)
-                {
-                    e->active = false;
-                    wave->activeCount--;
-                    DecreaseLife(1);
-                }
-                else
-                {
-                    e->position = wave->path[s];
+                if (s >= e->parentWave->pathCount) {
+                    reachedEnd = true;
                 }
             }
-
-            if (e->active && s < wave->pathCount - 1)
-            {
-                e->position = Vector2Lerp(wave->path[s], wave->path[s + 1], e->t);
+            
+            if (e->active && s < e->parentWave->pathCount - 1) { 
+                e->position = Vector2Lerp(e->parentWave->path[s], e->parentWave->path[s + 1], e->t);
             }
-            else if (e->active && s == wave->pathCount - 1)
-            {
-                e->position = Vector2Lerp(wave->path[s], wave->path[s], 1.0f);
-            }
+        } else {
+            reachedEnd = true;
         }
-        else
-        {
-            if (e->active)
-            {
-                e->active = false;
-                wave->activeCount--;
+        
+        if (e->hp <= 0) {
+            isDefeated = true;
+        }
+
+        if (reachedEnd) {
+            if (!isDefeated) { 
                 DecreaseLife(1);
             }
+            isDefeated = true;
         }
 
-        if (e->active && e->hp <= 0)
-        {
+        if (isDefeated) {
             e->active = false;
-            wave->activeCount--;
-            AddMoney(10 + (wave->waveNum * 2));
+            totalActiveEnemiesCount--;
+            AddMoney(15);
         }
     }
 }
 
 void Enemies_Draw(const EnemyWave *wave, float globalScale, float offsetX, float offsetY)
 {
-    if (!wave || !wave->allEnemies)
+    if (!allActiveEnemies || totalActiveEnemiesCount == 0) {
+        TraceLog(LOG_DEBUG, "Enemies_Draw: No active enemies to draw (allActiveEnemies NULL or count is 0).");
         return;
+    }
 
+    TraceLog(LOG_DEBUG, "Enemies_Draw: Drawing %d active enemies.", totalActiveEnemiesCount);
     for (int i = 0; i < wave->total; i++)
     {
         const Enemy *e = &wave->allEnemies[i];
@@ -443,16 +447,6 @@ void Enemies_Draw(const EnemyWave *wave, float globalScale, float offsetX, float
                       screenPos.y + healthBarOffsetY,
                       currentHealthWidth, healthBarHeight, LIME);
     }
-}
-
-void InitWaveAssets()
-{
-    TraceLog(LOG_INFO, "Wave assets initialized (no global textures loaded here, handled by CreateWave).");
-}
-
-void ShutdownWaveAssets()
-{
-    TraceLog(LOG_INFO, "Wave assets shutdown (textures unloaded by FreeWave).");
 }
 
 // Ubah CreateWave agar mengembalikan pointer EnemyWave

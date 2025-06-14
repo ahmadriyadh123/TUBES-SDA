@@ -122,9 +122,16 @@ void UpdateAnimSprite(AnimSprite *sprite);
 void DrawAnimSprite(const AnimSprite *sprite, Vector2 position, float scale, Color tint);
 void UnloadAnimSprite(AnimSprite *sprite);
 
-void Enemies_Update(EnemyWave *wave, float deltaTime); 
-void Enemies_Draw(const EnemyWave *wave, float globalScale, float offsetX, float offsetY);
-void Enemies_BuildPath(int startX, int startY, EnemyWave* waveToBuild); // <--- UBAH PROTOTIPE
+void Enemies_BuildPath(int startX, int startY, EnemyWave* waveToBuild);
+Enemy* FindNextChainTarget(Enemy* currentTarget, Enemy* excludedTargets[], int excludedCount, float range);
+void Enemies_Update(float deltaTime); 
+void Enemies_Draw(float globalScale, float offsetX, float offsetY);
+
+EnemyWave* CreateWave(int startRow, int startCol); 
+void FreeWave(EnemyWave **wave);                  
+void UpdateWaveTimer(EnemyWave *wave, float deltaTime); 
+bool AllEnemiesInWaveFinished(const EnemyWave *wave);
+void DrawGameTimer(const EnemyWave *wave, float globalScale, float offsetX, float offsetY, int mapRow, int mapCol);
 
 Vector2 GetEnemyPosition(const Enemy *enemy);
 int GetEnemyHP(const Enemy *enemy);
@@ -140,14 +147,6 @@ void SetEnemySpeed(Enemy *enemy, float speed);
 void SetEnemyActive(Enemy *enemy, bool active);
 void SetEnemySpawned(Enemy *enemy, bool spawned);
 void SetEnemyPathIndex(Enemy *enemy, int index); 
-
-void InitWaveAssets();
-void ShutdownWaveAssets();
-EnemyWave* CreateWave(int startRow, int startCol); // <--- UBAH PROTOTIPE
-void FreeWave(EnemyWave **wave);                  // <--- UBAH PROTOTIPE
-void UpdateWaveTimer(EnemyWave *wave, float deltaTime); 
-bool AllEnemiesInWaveFinished(const EnemyWave *wave);
-void DrawGameTimer(const EnemyWave *wave, float globalScale, float offsetX, float offsetY, int mapRow, int mapCol);
 
 int GetWaveTotal(const EnemyWave *wave);
 int GetWaveActiveCount(const EnemyWave *wave);
