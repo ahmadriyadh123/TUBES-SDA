@@ -149,51 +149,59 @@ GameState GetUpgradeOrbitGameState(UpgradeType type) {
     }
 }
 
-static void UpdateNodeAndChildrenStatus(UpgradeNode *node, const Tower *tower, int purchasedExclusiveGroupId)
-{
-    if (!node)
-        return;
-    node->status = UPGRADE_LOCKED;
-    if (tower->purchasedUpgrades[node->type])
-    {
+static bool IsExclusiveSiblingPurchased(const UpgradeNode *node, const struct Tower *tower) {
+    if (!node || !node->parent || !tower || node->exclusiveGroupId == 0) {
+        return false;
+    }
+
+    UpgradeNode* parent = node->parent;
+    for (int i = 0; i < parent->numChildren; i++) {
+        UpgradeNode* sibling = parent->children[i];
+        
+        if (sibling && sibling != node && sibling->exclusiveGroupId == node->exclusiveGroupId && tower->purchasedUpgrades[sibling->type]) {
+            return true; 
+        }
+    }
+    return false; 
+}
+
+static void UpdateAllNodesRecursive(UpgradeNode* node, const struct Tower* tower) {
+    if (!node || !tower) return;
+
+    
+    if (tower->purchasedUpgrades[node->type]) {
         node->status = UPGRADE_PURCHASED;
-    }
-    else if (node->parent && node->parent->cost > 0 && !tower->purchasedUpgrades[node->parent->type])
-    {
-        node->status = UPGRADE_LOCKED;
-    }
-    else if (node->exclusiveGroupId != 0 && purchasedExclusiveGroupId == node->exclusiveGroupId)
-    {
-        node->status = UPGRADE_LOCKED_EXCLUDED;
-    }
-    else
-    {
-        if (node->parent && node->parent->cost == 0 && tower->purchasedUpgrades[node->parent->type])
-        {
-            node->status = UPGRADE_UNLOCKED;
-        }
-        else
-        {
-            node->status = UPGRADE_UNLOCKED;
+    } else {
+        
+        if (node->parent == NULL) { 
+            node->status = UPGRADE_PURCHASED; 
+        } else if (node->parent->status != UPGRADE_PURCHASED) {
+            node->status = UPGRADE_LOCKED; 
+        } else {
+            
+            if (IsExclusiveSiblingPurchased(node, tower)) {
+                node->status = UPGRADE_LOCKED_EXCLUDED; 
+            } else {
+                node->status = UPGRADE_UNLOCKED; 
+            }
         }
     }
-    int nextPurchasedExclusiveGroupId = purchasedExclusiveGroupId;
-    if (node->status == UPGRADE_PURCHASED && node->exclusiveGroupId != 0)
-    {
-        nextPurchasedExclusiveGroupId = node->exclusiveGroupId;
-    }
-    for (int i = 0; i < node->numChildren; i++)
-    {
-        UpdateNodeAndChildrenStatus(node->children[i], tower, nextPurchasedExclusiveGroupId);
+
+    
+    for (int i = 0; i < node->numChildren; i++) {
+        UpdateAllNodesRecursive(node->children[i], tower);
     }
 }
 
+
 void UpdateUpgradeTreeStatus(TowerUpgradeTree *tree, const Tower *tower)
 {
-    if (!tree || !tree->root || !tower)
+    if (!tree || !tree->root || !tower) {
+        TraceLog(LOG_WARNING, "UpdateUpgradeTreeStatus: Invalid parameters provided.");
         return;
-
-    UpdateNodeAndChildrenStatus(tree->root, tower, 0);
+    }
+    
+    UpdateAllNodesRecursive(tree->root, tower);
 }
 
 Texture2D GetUpgradeIconTexture(UpgradeType type)
