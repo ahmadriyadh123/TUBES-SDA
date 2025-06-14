@@ -1,3 +1,12 @@
+/* File        : common.h
+* Deskripsi   : Header file yang berisi definisi tipe data umum (common). 
+*               Berisi enum dan struct inti seperti GameState dan tipe-tipe Upgrade
+*               yang digunakan oleh berbagai modul di seluruh program untuk memastikan konsistensi 
+*               dan menghindari dependensi sirkular antar file header. 
+* Dibuat oleh : Ahmad Riyadh Almaliki
+* Tanggal Perubahan : Jumat, 13 Juni 2025
+*/
+
 #ifndef COMMON_H
 #define COMMON_H
 
