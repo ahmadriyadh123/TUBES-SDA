@@ -421,49 +421,39 @@ bool HandleUpgradeOrbitClick(Vector2 mousePos, float currentTileScale)
 
 void DrawUpgradeOrbitMenu(float currentTileScale, float mapScreenOffsetX, float mapScreenOffsetY)
 {
-    if (!selectedTowerForDeletion || !currentOrbitParentNode) return;
+
+    if (!selectedTowerForDeletion || !currentOrbitParentNode) {
+        return;
+    }
 
     Vector2 orbitCenter = towerSelectionUIPos;
     float orbitRadius = TILE_SIZE * currentTileScale * ORBIT_RADIUS_TILE_FACTOR;
     
     DrawCircleLines((int)orbitCenter.x, (int)orbitCenter.y, orbitRadius, RAYWHITE);
     UpdateUpgradeTreeStatus(&tower1UpgradeTree, selectedTowerForDeletion);
-    
-    UpgradeNode *parentNode = currentOrbitParentNode;
-    int numChildren = GetNumChildren(parentNode);
-    int totalButtons = numChildren + (parentNode->parent != NULL ? 1 : 0);
-    if (!parentNode)
-    {
-        TraceLog(LOG_ERROR, "DrawUpgradeOrbitMenu: Parent node is NULL!");
-        return;
-    }
 
+    UpgradeNode *parentNode = currentOrbitParentNode;
+    int numChildren = GetNumChildren(parentNode);    
+    
+    int totalButtons = numChildren + (parentNode->parent != NULL ? 1 : 0); 
+    
     for (int i = 0; i < numChildren; i++)
     {
         UpgradeNode *childNode = GetNthChild(parentNode, i);
-        if (!childNode)
-            continue;
+        if (!childNode) continue;
 
         Rectangle buttonRect = GetOrbitButtonRect(orbitCenter, orbitRadius, i, totalButtons, ORBIT_BUTTON_DRAW_SCALE, upgradeButtonTex);
 
-        Texture2D iconStatusToDraw = lockedIconTex;
-
+        Texture2D iconStatusToDraw;
         switch (childNode->status)
         {
-        case UPGRADE_LOCKED:
-            iconStatusToDraw = lockedIconTex;
-            break;
-        case UPGRADE_UNLOCKED:
-            iconStatusToDraw = unlockedIconTex;
-            break;
-        case UPGRADE_PURCHASED:
-            iconStatusToDraw = purchasedIconTex;
-            break;
-        case UPGRADE_LOCKED_EXCLUDED:
-            iconStatusToDraw = excludedIconTex;
-            break;
+            case UPGRADE_LOCKED: iconStatusToDraw = lockedIconTex; break;
+            case UPGRADE_UNLOCKED: iconStatusToDraw = unlockedIconTex; break;
+            case UPGRADE_PURCHASED: iconStatusToDraw = purchasedIconTex; break;
+            case UPGRADE_LOCKED_EXCLUDED: iconStatusToDraw = excludedIconTex; break;
+            default: iconStatusToDraw = (Texture2D){0}; break;
         }
-
+        
         Texture2D upgradeIcon = GetUpgradeIconTexture(childNode->type);
         if (upgradeIcon.id != 0)
         {
@@ -475,45 +465,31 @@ void DrawUpgradeOrbitMenu(float currentTileScale, float mapScreenOffsetX, float 
                 iconDrawSize};
             DrawTexturePro(upgradeIcon, (Rectangle){0, 0, (float)upgradeIcon.width, (float)upgradeIcon.height}, iconDestRect, (Vector2){0, 0}, 0.0f, WHITE);
         }
-
-        float statusIconSize = buttonRect.width * 0.25f;
-        Rectangle statusIconDestRect = {buttonRect.x + buttonRect.width - statusIconSize - 2, buttonRect.y + 2, statusIconSize, statusIconSize};
+       
+        float statusIconSize = buttonRect.width * 0.35f;
+        Rectangle statusIconDestRect = {buttonRect.x + buttonRect.width - statusIconSize, buttonRect.y, statusIconSize, statusIconSize};
         if (iconStatusToDraw.id != 0)
         {
             DrawTexturePro(iconStatusToDraw, (Rectangle){0, 0, (float)iconStatusToDraw.width, (float)iconStatusToDraw.height}, statusIconDestRect, (Vector2){0, 0}, 0.0f, WHITE);
         }
     }
-    DrawTowers(currentTileScale, mapScreenOffsetX, mapScreenOffsetY);
-
-    if (isUpgradeAgreementPanelVisible && selectedUpgradeNodeForAgreement != NULL)
-    {
-        float panelWidth = GetScreenWidth() * 0.2f;
-        float panelHeight = GetScreenHeight() * 0.2f;
-        float panelX = (GetScreenWidth() - panelWidth) / 2.0f;
-        float panelY = (GetScreenHeight() - panelHeight) / 2.0f;
-
-        DrawRectangleRec((Rectangle){panelX, panelY, panelWidth, panelHeight}, Fade(GRAY, 0.9f));
-        DrawRectangleLinesEx((Rectangle){panelX, panelY, panelWidth, panelHeight}, 3, RAYWHITE);
-
-        const char *confirmText = TextFormat("Confirm purchase of '%s' for $%d?", selectedUpgradeNodeForAgreement->name, selectedUpgradeNodeForAgreement->cost);
-        Vector2 confirmTextSize = MeasureTextEx(GetFontDefault(), confirmText, 25, 1);
-        DrawText(confirmText, (int)(panelX + panelWidth / 2 - confirmTextSize.x / 2), (int)(panelY + 30), 25, RAYWHITE);
-
-        Vector2 descTextSize = MeasureTextEx(GetFontDefault(), selectedUpgradeNodeForAgreement->description, 18, 1);
-        DrawText(selectedUpgradeNodeForAgreement->description, (int)(panelX + panelWidth / 2 - descTextSize.x / 2), (int)(panelY + 70), 18, LIGHTGRAY);
-
-        float buttonWidth = panelWidth * 0.3f;
-        float buttonHeight = 40.0f;
-        float buttonSpacing = 20.0f;
-        Rectangle okButtonRect = {panelX + panelWidth / 2 - buttonWidth - buttonSpacing / 2, panelY + panelHeight - buttonHeight - 20, buttonWidth, buttonHeight};
-        Rectangle cancelButtonRect = {panelX + panelWidth / 2 + buttonSpacing / 2, panelY + panelHeight - buttonHeight - 20, buttonWidth, buttonHeight};
-
-        DrawRectangleRec(okButtonRect, GREEN);
-        DrawText("OK", (int)(okButtonRect.x + okButtonRect.width / 2 - MeasureText("OK", 20) / 2), (int)(okButtonRect.y + 10), 20, WHITE);
-        DrawRectangleRec(cancelButtonRect, RED);
-        DrawText("Cancel", (int)(cancelButtonRect.x + cancelButtonRect.width / 2 - MeasureText("Cancel", 20) / 2), (int)(cancelButtonRect.y + 10), 20, WHITE);
-
-        return;
+   
+    if (parentNode->parent != NULL)
+    {        
+        Rectangle backButtonRect = GetOrbitButtonRect(orbitCenter, orbitRadius, numChildren, totalButtons, ORBIT_BUTTON_DRAW_SCALE * 0.8f, deleteButtonTex); 
+        DrawRectangleRec(backButtonRect, DARKBLUE);
+        DrawRectangleLinesEx(backButtonRect, 2, RAYWHITE);
+        DrawText("Back", backButtonRect.x + 15, backButtonRect.y + 20, 20, WHITE);
+    }
+    if (pendingUpgradeNode != NULL) {
+        float iconSize = 16.0f * currentTileScale;
+        Rectangle destRect = { 
+            pendingUpgradeIconPos.x - iconSize / 2, 
+            pendingUpgradeIconPos.y - iconSize / 2, 
+            iconSize, 
+            iconSize 
+        };
+        DrawTexturePro(acceptIconTex, (Rectangle){0,0, (float)acceptIconTex.width, (float)acceptIconTex.height}, destRect, (Vector2){0,0}, 0.0f, WHITE);
     }
 }
 
