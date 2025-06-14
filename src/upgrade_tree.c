@@ -1,20 +1,15 @@
+
 #include "upgrade_tree.h"
-#include "tower.h" 
-#include "player_resources.h" 
-#include "utils.h" 
-#include <stdio.h> 
-#include <stdlib.h> 
-#include <string.h> 
+#include "common.h"
+#include "tower.h"
+#include "player_resources.h"
+#include "utils.h"
+#include "status.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 TowerUpgradeTree tower1UpgradeTree;
-
-static Texture2D lockedIconTex;
-static Texture2D unlockedIconTex;
-static Texture2D purchasedIconTex;
-static Texture2D excludedIconTex;
-
-static UpgradeNode *currentOrbitParentNode = NULL;
-static UpgradeNode *prevOrbitParentNode = NULL;
 
 Texture2D upgradeIcon_AttackSpeedBase = {0};
 Texture2D upgradeIcon_AttackPowerBase = {0};
@@ -29,12 +24,40 @@ Texture2D upgradeIcon_LargeAoERadius = {0};
 Texture2D upgradeIcon_HighCritChance = {0};
 Texture2D upgradeIcon_LethalPoison = {0};
 Texture2D upgradeIcon_MassSlow = {0};
+Texture2D acceptIconTex = { 0 };
 
-bool isUpgradeAgreementPanelVisible = false;
-UpgradeNode *selectedUpgradeNodeForAgreement = NULL;
+UpgradeNode* pendingUpgradeNode = NULL;
+Vector2 pendingUpgradeIconPos = { 0 };
 
-void InitUpgradeTree(TowerUpgradeTree* tree, TowerType type) {
-    
+static Texture2D lockedIconTex;
+static Texture2D unlockedIconTex;
+static Texture2D purchasedIconTex;
+static Texture2D excludedIconTex;
+
+static UpgradeNode *currentOrbitParentNode = NULL;
+static UpgradeNode *prevOrbitParentNode = NULL;
+
+UpgradeNode *CreateUpgradeNode(UpgradeType type, const char *name, const char *desc, int cost, UpgradeNode *parent, int exclusiveGroupId)
+{
+    UpgradeNode *node = (UpgradeNode *)malloc(sizeof(UpgradeNode));
+    if (node == NULL)
+    {
+        TraceLog(LOG_ERROR, "Failed to allocate UpgradeNode for %s", name);
+        return NULL;
+    }
+    *node = (UpgradeNode){0};
+    node->type = type;
+    node->name = name;
+    node->description = desc;
+    node->cost = cost;
+    node->parent = parent;
+    node->exclusiveGroupId = exclusiveGroupId;
+    node->status = UPGRADE_LOCKED;
+    return node;
+}
+
+void InitUpgradeTree(TowerUpgradeTree *tree, TowerType type)
+{
     lockedIconTex = LoadTextureSafe("assets/img/upgrade_imgs/locked.png");
     unlockedIconTex = LoadTextureSafe("assets/img/upgrade_imgs/unlocked.png");
     purchasedIconTex = LoadTextureSafe("assets/img/upgrade_imgs/purchased.png");
@@ -53,44 +76,82 @@ void InitUpgradeTree(TowerUpgradeTree* tree, TowerType type) {
     upgradeIcon_HighCritChance = LoadTextureSafe("assets/img/upgrade_imgs/critical_upgrade(2).png"); 
     upgradeIcon_LethalPoison = LoadTextureSafe("assets/img/upgrade_imgs/poison_upgrade.png"); 
     upgradeIcon_MassSlow = LoadTextureSafe("assets/img/upgrade_imgs/slow_upgrade.png"); 
-    TraceLog(LOG_INFO, "Initializing upgrade tree for Tower Type %d", type);    
+    acceptIconTex = LoadTextureSafe("assets/img/upgrade_imgs/accept.png"); 
 
-    tree->root = CreateUpgradeNode(UPGRADE_NONE, "Upgrade Tower", "Pilih jalur upgrade", 0, NULL, 0); 
-    if (!tree->root) return;
+    TraceLog(LOG_INFO, "Initializing upgrade tree for Tower Type %d", type);
+
+    tree->root = CreateUpgradeNode(UPGRADE_NONE, "Upgrade Tower", "Pilih jalur upgrade", 0, NULL, 0);
+    if (!tree->root)
+        return;
     tree->root->status = UPGRADE_UNLOCKED;
 
-    UpgradeNode* speedBase = CreateUpgradeNode(UPGRADE_ATTACK_SPEED_BASE, "Upgrade Kecepatan Serangan", "Meningkatkan kecepatan serangan dasar.", 0, tree->root, 1);
-    UpgradeNode* powerBase = CreateUpgradeNode(UPGRADE_ATTACK_POWER_BASE, "Upgrade Kekuatan Serangan", "Meningkatkan kekuatan serangan dasar.", 0, tree->root, 1);
-    UpgradeNode* specialBase = CreateUpgradeNode(UPGRADE_SPECIAL_EFFECT_BASE, "Upgrade Efek Khusus", "Membuka jalur efek khusus.", 0, tree->root, 1);
+    UpgradeNode *speedBase = CreateUpgradeNode(UPGRADE_ATTACK_SPEED_BASE, "Upgrade Kecepatan Serangan", "Meningkatkan kecepatan serangan dasar.", 0, tree->root, 1);
+    UpgradeNode *powerBase = CreateUpgradeNode(UPGRADE_ATTACK_POWER_BASE, "Upgrade Kekuatan Serangan", "Meningkatkan kekuatan serangan dasar.", 0, tree->root, 1);
+    UpgradeNode *specialBase = CreateUpgradeNode(UPGRADE_SPECIAL_EFFECT_BASE, "Upgrade Efek Khusus", "Membuka jalur efek khusus.", 0, tree->root, 1);
 
     tree->root->children[tree->root->numChildren++] = speedBase;
     tree->root->children[tree->root->numChildren++] = powerBase;
     tree->root->children[tree->root->numChildren++] = specialBase;
 
-    UpgradeNode* lightning = CreateUpgradeNode(UPGRADE_LIGHTNING_ATTACK, "Serangan Kilat", "Serangan sangat cepat.", 75, speedBase, 2);
-    UpgradeNode* chain = CreateUpgradeNode(UPGRADE_CHAIN_ATTACK, "Serangan Berantai", "Serangan melompat ke musuh terdekat.", 100, speedBase, 2);
+    UpgradeNode *lightning = CreateUpgradeNode(UPGRADE_LIGHTNING_ATTACK, "Serangan Kilat", "Serangan sangat cepat.", 75, speedBase, 2);
+    UpgradeNode *chain = CreateUpgradeNode(UPGRADE_CHAIN_ATTACK, "Serangan Berantai", "Serangan melompat ke musuh terdekat.", 100, speedBase, 2);
     speedBase->children[speedBase->numChildren++] = lightning;
     speedBase->children[speedBase->numChildren++] = chain;
 
-    UpgradeNode* area = CreateUpgradeNode(UPGRADE_AREA_ATTACK, "Serangan Area", "Serangan merusak beberapa musuh sekaligus.", 110, powerBase, 3);
-    UpgradeNode* critical = CreateUpgradeNode(UPGRADE_CRITICAL_ATTACK, "Serangan Kritikal", "Meningkatkan peluang critical hit.", 120, powerBase, 3);
+    UpgradeNode *area = CreateUpgradeNode(UPGRADE_AREA_ATTACK, "Serangan Area", "Serangan merusak beberapa musuh sekaligus.", 110, powerBase, 3);
+    UpgradeNode *critical = CreateUpgradeNode(UPGRADE_CRITICAL_ATTACK, "Serangan Kritikal", "Meningkatkan peluang critical hit.", 120, powerBase, 3);
     powerBase->children[powerBase->numChildren++] = area;
     powerBase->children[powerBase->numChildren++] = critical;
-    
-    UpgradeNode* poison = CreateUpgradeNode(UPGRADE_LETHAL_POISON, "Racun Mematikan", "Serangan meracuni musuh.", 150, specialBase, 4);
-    UpgradeNode* massSlow = CreateUpgradeNode(UPGRADE_MASS_SLOW, "Perlambat Massal", "Serangan memperlambat area luas.", 160, specialBase, 4);
+
+    UpgradeNode *poison = CreateUpgradeNode(UPGRADE_LETHAL_POISON, "Racun Mematikan", "Serangan meracuni musuh.", 150, specialBase, 4);
+    UpgradeNode *massSlow = CreateUpgradeNode(UPGRADE_MASS_SLOW, "Perlambat Massal", "Serangan memperlambat area luas.", 160, specialBase, 4);
     specialBase->children[specialBase->numChildren++] = poison;
     specialBase->children[specialBase->numChildren++] = massSlow;
 
-    UpgradeNode* stun = CreateUpgradeNode(UPGRADE_STUN_EFFECT, "Efek Stun", "Serangan Kilat memiliki peluang stun.", 180, lightning, 5); 
-    UpgradeNode* wideChain = CreateUpgradeNode(UPGRADE_WIDE_CHAIN_RANGE, "Jangkauan Berantai Luas", "Meningkatkan jangkauan lompatan.", 160, chain, 6); 
-    UpgradeNode* largeAoE = CreateUpgradeNode(UPGRADE_LARGE_AOE_RADIUS, "Jangkauan AoE Lebih Besar", "Meningkatkan radius Serangan Area.", 170, area, 7); 
-    UpgradeNode* highCrit = CreateUpgradeNode(UPGRADE_HIGH_CRIT_CHANCE, "Peluang Kritikal Tinggi", "Meningkatkan peluang critical hit secara signifikan.", 180, critical, 8); 
+    UpgradeNode *stun = CreateUpgradeNode(UPGRADE_STUN_EFFECT, "Efek Stun", "Serangan Kilat memiliki peluang stun.", 180, lightning, 5);
+    UpgradeNode *wideChain = CreateUpgradeNode(UPGRADE_WIDE_CHAIN_RANGE, "Jangkauan Berantai Luas", "Meningkatkan jangkauan lompatan.", 160, chain, 6);
+    UpgradeNode *largeAoE = CreateUpgradeNode(UPGRADE_LARGE_AOE_RADIUS, "Jangkauan AoE Lebih Besar", "Meningkatkan radius Serangan Area.", 170, area, 7);
+    UpgradeNode *highCrit = CreateUpgradeNode(UPGRADE_HIGH_CRIT_CHANCE, "Peluang Kritikal Tinggi", "Meningkatkan peluang critical hit secara signifikan.", 180, critical, 8);
 
     lightning->children[lightning->numChildren++] = stun;
     chain->children[chain->numChildren++] = wideChain;
     area->children[area->numChildren++] = largeAoE;
     critical->children[critical->numChildren++] = highCrit;
+}
+
+Texture2D GetUpgradeIconTexture(UpgradeType type)
+{
+    switch (type)
+    {
+    case UPGRADE_ATTACK_SPEED_BASE:
+        return upgradeIcon_AttackSpeedBase;
+    case UPGRADE_ATTACK_POWER_BASE:
+        return upgradeIcon_AttackPowerBase;
+    case UPGRADE_SPECIAL_EFFECT_BASE:
+        return upgradeIcon_SpecialEffectBase;
+    case UPGRADE_LIGHTNING_ATTACK:
+        return upgradeIcon_LightningAttack;
+    case UPGRADE_CHAIN_ATTACK:
+        return upgradeIcon_ChainAttack;
+    case UPGRADE_AREA_ATTACK:
+        return upgradeIcon_AreaAttack;
+    case UPGRADE_CRITICAL_ATTACK:
+        return upgradeIcon_CriticalAttack;
+    case UPGRADE_STUN_EFFECT:
+        return upgradeIcon_StunEffect;
+    case UPGRADE_WIDE_CHAIN_RANGE:
+        return upgradeIcon_WideChainRange;
+    case UPGRADE_LARGE_AOE_RADIUS:
+        return upgradeIcon_LargeAoERadius;
+    case UPGRADE_HIGH_CRIT_CHANCE:
+        return upgradeIcon_HighCritChance;
+    case UPGRADE_LETHAL_POISON:
+        return upgradeIcon_LethalPoison;
+    case UPGRADE_MASS_SLOW:
+        return upgradeIcon_MassSlow;
+    default:
+        return (Texture2D){0};
+    }
 }
 
 UpgradeNode* CreateUpgradeNode(UpgradeType type, const char* name, const char* desc, int cost, UpgradeNode* parent, int exclusiveGroupId) {
