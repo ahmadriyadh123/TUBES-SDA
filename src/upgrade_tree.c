@@ -170,11 +170,11 @@ Texture2D GetUpgradeIconTexture(UpgradeType type)
     }
 }
 
+//Mengembalikan true jika ada saudara eksklusif yang sudah dibeli, false jika tidak.
 static bool IsExclusiveSiblingPurchased(const UpgradeNode *node, const struct Tower *tower) {
     if (!node || !node->parent || !tower || node->exclusiveGroupId == 0) {
         return false;
     }
-
     UpgradeNode* parent = node->parent;
     for (int i = 0; i < parent->numChildren; i++) {
         UpgradeNode* sibling = parent->children[i];
@@ -186,9 +186,10 @@ static bool IsExclusiveSiblingPurchased(const UpgradeNode *node, const struct To
     return false; 
 }
 
+/* I.S. : Status dari 'node' dan semua turunannya mungkin belum sesuai dengan kondisi 'tower' saat ini.
+   F.S. : Status dari 'node' dan semua turunannya telah diperbarui. */
 static void UpdateAllNodesRecursive(UpgradeNode* node, const struct Tower* tower) {
     if (!node || !tower) return;
-
     
     if (tower->purchasedUpgrades[node->type]) {
         node->status = UPGRADE_PURCHASED;
@@ -208,7 +209,6 @@ static void UpdateAllNodesRecursive(UpgradeNode* node, const struct Tower* tower
         }
     }
 
-    
     for (int i = 0; i < node->numChildren; i++) {
         UpdateAllNodesRecursive(node->children[i], tower);
     }
@@ -525,7 +525,8 @@ void DrawUpgradeOrbitMenu(float currentTileScale, float mapScreenOffsetX, float 
         DrawTexturePro(acceptIconTex, (Rectangle){0,0, (float)acceptIconTex.width, (float)acceptIconTex.height}, destRect, (Vector2){0,0}, 0.0f, WHITE);
     }
 }
-
+/* I.S. : 'node' dan semua turunannya mungkin masih dialokasikan di memori.
+ * F.S. : Memori untuk 'node' dan semua turunannya telah dibebaskan. */
 static void FreeUpgradeNode(UpgradeNode* node) {
     if (!node) return;
     for (int i = 0; i < node->numChildren; i++) {
