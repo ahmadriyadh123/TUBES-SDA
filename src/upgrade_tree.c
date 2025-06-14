@@ -196,65 +196,39 @@ void UpdateUpgradeTreeStatus(TowerUpgradeTree *tree, const Tower *tower)
     UpdateNodeAndChildrenStatus(tree->root, tower, 0);
 }
 
-void ApplyUpgradeEffect(Tower *tower, UpgradeType type)
+Texture2D GetUpgradeIconTexture(UpgradeType type)
 {
-    if (!tower)
-        return;
-
     switch (type)
     {
     case UPGRADE_ATTACK_SPEED_BASE:
-        SetTowerAttackSpeed(tower, GetTowerAttackSpeed(tower) * 1.2f);
-        TraceLog(LOG_INFO, "Upgrade applied: Attack Speed increased to %.2f", GetTowerAttackSpeed(tower));
-        break;
+        return upgradeIcon_AttackSpeedBase;
     case UPGRADE_ATTACK_POWER_BASE:
-        SetTowerDamage(tower, GetTowerDamage(tower) + 15);
-        TraceLog(LOG_INFO, "Upgrade applied: Attack Power increased to %d", GetTowerDamage(tower));
-        break;
+        return upgradeIcon_AttackPowerBase;
     case UPGRADE_SPECIAL_EFFECT_BASE:
-        TraceLog(LOG_INFO, "Upgrade applied: Special Effect path unlocked.");
-        break;
+        return upgradeIcon_SpecialEffectBase;
     case UPGRADE_LIGHTNING_ATTACK:
-        SetTowerAttackSpeed(tower, GetTowerAttackSpeed(tower) * 1.5f);
-        TraceLog(LOG_INFO, "Upgrade applied: Lightning Attack (speed increased to %.2f)", GetTowerAttackSpeed(tower));
-        break;
+        return upgradeIcon_LightningAttack;
     case UPGRADE_CHAIN_ATTACK:
-        SetTowerDamage(tower, GetTowerDamage(tower) * 0.8f);
-        TraceLog(LOG_INFO, "Upgrade applied: Chain Attack unlocked.");
-        break;
+        return upgradeIcon_ChainAttack;
     case UPGRADE_AREA_ATTACK:
-        SetTowerDamage(tower, GetTowerDamage(tower) * 0.7f);
-        TraceLog(LOG_INFO, "Upgrade applied: Area Attack unlocked.");
-        break;
+        return upgradeIcon_AreaAttack;
     case UPGRADE_CRITICAL_ATTACK:
-        SetTowerDamage(tower, GetTowerDamage(tower) + 5);
-        TraceLog(LOG_INFO, "Upgrade applied: Critical Attack unlocked.");
-        break;
+        return upgradeIcon_CriticalAttack;
     case UPGRADE_STUN_EFFECT:
-        TraceLog(LOG_INFO, "Upgrade applied: Stun Effect added to Lightning Attack.");
-        break;
+        return upgradeIcon_StunEffect;
     case UPGRADE_WIDE_CHAIN_RANGE:
-        TraceLog(LOG_INFO, "Upgrade applied: Wide Chain Range increased.");
-        break;
+        return upgradeIcon_WideChainRange;
     case UPGRADE_LARGE_AOE_RADIUS:
-        TraceLog(LOG_INFO, "Upgrade applied: Large AoE Radius increased.");
-        break;
+        return upgradeIcon_LargeAoERadius;
     case UPGRADE_HIGH_CRIT_CHANCE:
-        SetTowerDamage(tower, GetTowerDamage(tower) + 10);
-        TraceLog(LOG_INFO, "Upgrade applied: High Crit Chance increased.");
-        break;
+        return upgradeIcon_HighCritChance;
     case UPGRADE_LETHAL_POISON:
-        TraceLog(LOG_INFO, "Upgrade applied: Lethal Poison effect unlocked.");
-        break;
+        return upgradeIcon_LethalPoison;
     case UPGRADE_MASS_SLOW:
-        TraceLog(LOG_INFO, "Upgrade applied: Mass Slow effect unlocked.");
-        break;
+        return upgradeIcon_MassSlow;
     default:
-        TraceLog(LOG_WARNING, "Attempted to apply unknown upgrade type: %d", type);
-        break;
+        return (Texture2D){0};
     }
-    tower->purchasedUpgrades[type] = true;
-    TraceLog(LOG_INFO, "Applied upgrade %d to tower at (%d,%d).", type, tower->row, tower->col);
 }
 
 void ResetUpgradeOrbit(void)
@@ -285,64 +259,6 @@ void NavigateUpgradeOrbitBack(void)
     {
         TraceLog(LOG_WARNING, "Cannot navigate back from root orbit node.");
     }
-}
-
-void ShowUpgradeAgreementPanel(UpgradeNode *node)
-{
-    selectedUpgradeNodeForAgreement = node;
-    isUpgradeAgreementPanelVisible = true;
-    currentGameState = GAMEPLAY_TOWER_UPGRADE_AGREEMENT;
-    TraceLog(LOG_INFO, "Upgrade Agreement: Panel shown for '%s'.", node->name);
-}
-
-void HideUpgradeAgreementPanel(void)
-{
-    selectedUpgradeNodeForAgreement = NULL;
-    isUpgradeAgreementPanelVisible = false;
-    TraceLog(LOG_INFO, "Upgrade Agreement: Panel hidden.");
-}
-
-void ProcessUpgradeAgreement(bool confirmed)
-{
-    if (confirmed && selectedUpgradeNodeForAgreement != NULL && selectedTowerForDeletion != NULL)
-    {
-        UpgradeNode *node = selectedUpgradeNodeForAgreement;
-        if (node->status == UPGRADE_UNLOCKED && GetMoney() >= node->cost)
-        {
-            ApplyUpgradeEffect(selectedTowerForDeletion, node->type);
-            AddMoney(-node->cost);
-            selectedTowerForDeletion->purchasedUpgrades[node->type] = true;
-
-            TraceLog(LOG_INFO, "Confirmed purchase of '%s' for $%d. Money: $%d", node->name, node->cost, GetMoney());
-
-            UpdateUpgradeTreeStatus(&tower1UpgradeTree, selectedTowerForDeletion);
-
-            if (GetNumChildren(node) > 0)
-            {
-                NavigateUpgradeOrbit(node);
-                currentGameState = GetUpgradeOrbitGameState(GetCurrentOrbitParentNode()->type);
-            }
-            else
-            {
-
-                currentGameState = GAMEPLAY;
-                HideTowerSelectionUI();
-            }
-        }
-        else
-        {
-            TraceLog(LOG_WARNING, "Upgrade Agreement: Purchase failed. Node status: %d, Money: %d, Cost: %d", node->status, GetMoney(), node->cost);
-
-            currentGameState = GetUpgradeOrbitGameState(GetCurrentOrbitParentNode()->type);
-        }
-    }
-    else
-    {
-        TraceLog(LOG_INFO, "Upgrade Agreement: Purchase cancelled.");
-
-        currentGameState = GetUpgradeOrbitGameState(GetCurrentOrbitParentNode()->type);
-    }
-    HideUpgradeAgreementPanel();
 }
 
 void UpdateUpgradeOrbitMenu(float deltaTime, Vector2 mousePos, float currentTileScale, float mapScreenOffsetX, float mapScreenOffsetY)
