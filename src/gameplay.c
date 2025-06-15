@@ -360,3 +360,32 @@ void DrawGameplay(void) {
     DrawHUD(currentMapName, GetMoney(), GetLife(), GetMousePosition());
     DrawStatus(statusStack);
 }
+
+//Berguna untuk modul UI lain yang perlu menggambar relatif terhadap ukuran peta.
+float GetCurrentTileScale(void) { return currentTileScale; }
+
+//Mengirimkan nilai offset X layar peta saat ini.
+float GetMapScreenOffsetX(void) { return mapScreenOffsetX; }
+
+//Mengirimkan nilai offset Y layar peta saat ini.
+float GetMapScreenOffsetY(void) { return mapScreenOffsetY; }
+
+// I.S. : Aset-aset gameplay sedang berada di memori.
+// F.S. : Semua aset gameplay telah dibebaskan dari memori.
+void UnloadGameplay(){
+    FreeWave(&currentWave);
+    Enemies_ShutdownAssets();
+    ShutdownTowerAssets();
+    ShutdownShots();
+    ShutdownMapAssets();
+    FreeUpgradeTree(&tower1UpgradeTree); 
+    UnloadTexture(moneyIconTex);
+    UnloadTexture(lifeIconTex); 
+    UnloadTexture(pauseButtonTex);
+    for (int i = 0; i < activeWavesCount; ++i) {
+        FreeWave(&activeWaves[i]);
+    }
+    activeWavesCount = 0;
+    gameplayInitialized = false;
+    TraceLog(LOG_INFO, "GAMEPLAY: Shutdown complete.");
+}
