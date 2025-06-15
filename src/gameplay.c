@@ -44,48 +44,71 @@ void InitGameplay(void) {
 // F.S. : Semua state (uang, nyawa, tower, musuh) di-reset ke kondisi awal,
 // dan permainan dimulai pada state GAMEPLAY.
 void RestartGameplay(void) {
-    TraceLog(LOG_INFO, "GAMEPLAY: Starting/Restarting session...");
+    TraceLog(LOG_INFO, "GAMEPLAY: Full restart initiated...");
     InitGameplay();
-    
-    // Pembersihan Entitas Game (untuk restart)
-    for (int i = 0; i < activeWavesCount; ++i) { FreeWave(&activeWaves[i]); }
+
+    // Bersihkan semua gelombang yang mungkin masih aktif atau ada di antrian
+    for (int i = 0; i < activeWavesCount; ++i) {
+        FreeWave(&activeWaves[i]);
+    }
     activeWavesCount = 0;
     
+    // Bersihkan semua tower yang ada di peta
     Tower *currentTower = towersListHead;
     while (currentTower != NULL) {
         Tower *next = (Tower *)currentTower->next;
-        RemoveTower(currentTower);
+        RemoveTower(currentTower); 
         currentTower = next;
     }
-    towersListHead = NULL;
+    towersListHead = NULL; 
     
     if (allActiveEnemies != NULL) {
         for (int i = 0; i < maxTotalActiveEnemies; i++) {
-            allActiveEnemies[i].active = false;
+            allActiveEnemies[i].active = false; 
         }
     }
     totalActiveEnemiesCount = 0;
-    
+
     HideTowerSelectionUI();
     ResetUpgradeOrbit();
-    CreateStatus(&statusStack);
+    CreateStatus(&statusStack);     
     SetMoney(200);
     SetLife(10);
+
     currentWaveNum = 1;
     timeToNextWave = -1.0f;
-    
+    maxWavesForCurrentLevel = -1;
+
     //Menentukan peta yang akan digunakan setelah restart
     if (selectedCustomMapIndex != -1) {
-        
+        TraceLog(LOG_ERROR, "DEBUG_TRACE (Restart): Mengambil jalur 'Custom Map'.");
         const char* mapToLoad = customMaps[selectedCustomMapIndex].filePath;
-        LoadLevelFromFile(mapToLoad);
-        StrCopySafe(currentMapName, GetFileNameWithoutExt(mapToLoad), sizeof(currentMapName));
+        if (LoadLevelFromFile(mapToLoad)) {
+            for (int r = 0; r < MAP_ROWS; r++) {
+                for (int c = 0; c < MAP_COLS; c++) {
+                    SetMapTile(r, c, GetEditorMapTile(r, c));
+                }
+            }
+            maxWavesForCurrentLevel = GetEditorWaveCount();
+            StrCopySafe(currentMapName, GetFileNameWithoutExt(mapToLoad), sizeof(currentMapName));
+            TraceLog(LOG_INFO, "RestartGameplay: Loaded Custom Map '%s'", currentMapName);
+        } else {
+            TraceLog(LOG_ERROR, "DEBUG_TRACE (Restart): Mengambil jalur 'Default/Editor'.");
+            StrCopySafe(currentMapName, "Default Map", sizeof(currentMapName));
+        }
+
     } else {
-        
         const char* editorFile = GetEditorMapFileName();
-        if (editorFile && strcmp(editorFile, "maps/map.txt") != 0 && strlen(editorFile) > 0) {
+        if (editorFile && strcmp(editorFile, "maps/map.txt") != 0) {
+            for (int r = 0; r < MAP_ROWS; r++) {
+                for (int c = 0; c < MAP_COLS; c++) {
+                    SetMapTile(r, c, GetEditorMapTile(r, c));
+                }
+            }
+            maxWavesForCurrentLevel = GetEditorWaveCount();
             StrCopySafe(currentMapName, GetFileNameWithoutExt(editorFile), sizeof(currentMapName));
         } else {
+            ResetMapToDefault();
             StrCopySafe(currentMapName, "Default Map", sizeof(currentMapName));
         }
     }
@@ -94,14 +117,26 @@ void RestartGameplay(void) {
     int startRow = GetEditorStartRow();
     int startCol = GetEditorStartCol();
     if (startRow == -1 || startCol == -1) { startRow = 0; startCol = 4; } 
-
+    
     // Membuat objek gelombang musuh pertama dan menambahkannya ke daftar gelombang aktif.
     EnemyWave* firstWave = CreateWave(startRow, startCol);
     if (firstWave) {
+
+        if (firstWave->pathCount == 0) {
+            Push(&statusStack, "Error: Map has no valid path from start point!"); 
+            TraceLog(LOG_ERROR, "GAMEPLAY: Failed to start. Map has no valid path.");
+            FreeWave(&firstWave);     
+            currentGameState = MAIN_MENU; 
+            return;               
+        }
         activeWaves[activeWavesCount++] = firstWave;
     }
+    
     currentGameState = GAMEPLAY;
+    selectedCustomMapIndex = -1;
+    TraceLog(LOG_INFO, "GAMEPLAY: Restart complete. Starting new session on map '%s'.", currentMapName);
 }
+
 
 // I.S. : State semua entitas game (musuh, tower, wave) pada frame sebelumnya.
 // F.S. : State semua entitas game telah diperbarui.
