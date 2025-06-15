@@ -22,22 +22,6 @@ typedef struct
 } TowerUpgradeTree;
 
 extern TowerUpgradeTree tower1UpgradeTree;
-
-extern Texture2D upgradeIcon_AttackSpeedBase;
-extern Texture2D upgradeIcon_AttackPowerBase;
-extern Texture2D upgradeIcon_SpecialEffectBase;
-extern Texture2D upgradeIcon_LightningAttack;
-extern Texture2D upgradeIcon_ChainAttack;
-extern Texture2D upgradeIcon_AreaAttack;
-extern Texture2D upgradeIcon_CriticalAttack;
-extern Texture2D upgradeIcon_StunEffect;
-extern Texture2D upgradeIcon_WideChainRange;
-extern Texture2D upgradeIcon_LargeAoERadius;
-extern Texture2D upgradeIcon_HighCritChance;
-extern Texture2D upgradeIcon_LethalPoison;
-extern Texture2D upgradeIcon_MassSlow;
-extern Texture2D acceptIconTex;
-
 extern UpgradeNode* pendingUpgradeNode;
 extern Vector2 pendingUpgradeIconPos;  
 
@@ -46,11 +30,15 @@ extern Vector2 pendingUpgradeIconPos;
           membentuk sebuah pohon upgrade yang lengkap untuk 'type' tower yang ditentukan. */
 void InitUpgradeTree(TowerUpgradeTree *tree, TowerType type);
 
-/*
-I.S : Parameter-parameter seperti type, name, desc, cost, parent, dan exclusiveGroupId telah siap untuk digunakan dalam pembuatan node baru.
-F.S.: 'UpgradeNode' baru telah dialokasikan di memori dan semua propertinya telah diisi sesuai dengan parameter yang diberikan.
-Fungsi mengembalikan pointer ke node baru tersebut. Jika alokasi memori gagal, fungsi akan mengembalikan NULL.*/
+/* I.S : Parameter-parameter seperti type, name, desc, cost, parent, dan exclusiveGroupId telah siap untuk digunakan dalam pembuatan node baru.
+   F.S.: 'UpgradeNode' baru telah dialokasikan di memori dan semua propertinya telah diisi sesuai dengan parameter yang diberikan.
+         Fungsi mengembalikan pointer ke node baru tersebut. Jika alokasi memori gagal, fungsi akan mengembalikan NULL.*/
 UpgradeNode *CreateUpgradeNode(UpgradeType type, const char *name, const char *desc, int cost, UpgradeNode *parent, int exclusiveGroupId)
+
+/* I.S. : Tower yang mungkin sudah memiliki beberapa upgrade telah terinisialisasi.
+   F.S. : Mengembalikan pointer ke 'UpgradeNode'. Jika belum ada upgrade yang dibeli, fungsi akan
+          mengembalikan pointer ke root dari 'tower1UpgradeTree'.*/
+UpgradeNode* FindCurrentUpgradeNode(const struct Tower *tower);
 
 /* I.S. : Status setiap node di dalam 'tree' mungkin tidak sesuai dengan upgrade yang dimiliki 'tower'.
    F.S. : Status (LOCKED, UNLOCKED, PURCHASED) dari setiap node di dalam 'tree' telah diperbarui
@@ -85,10 +73,6 @@ void SetPrevOrbitParentNode(UpgradeNode *node);
    F.S. : Tampilan menu orbit berpindah, di mana 'currentOrbitParentNode' yang lama disimpan ke 'prevOrbitParentNode'
           dan 'currentOrbitParentNode' yang baru diatur menjadi 'targetNode'. */
 void NavigateUpgradeOrbit(UpgradeNode *targetNode);
-
-/* I.S. : Menu orbit menampilkan anak-anak dari sebuah node.
-   F.S. : Tampilan menu orbit berpindah kembali ke parent dari node saat ini. */
-void NavigateUpgradeOrbitBack(void);
 
 /* I.S. : Tampilan menu orbit bisa berada di level mana pun dalam pohon upgrade.
    F.S. : Tampilan menu orbit di-reset kembali ke level paling awal (akar/root dari pohon). */

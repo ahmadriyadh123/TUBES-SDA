@@ -7,43 +7,33 @@
 */
 
 #include "upgrade_tree.h"
-#include "common.h"
 #include "tower.h"
 #include "player_resources.h"
 #include "utils.h"
 #include "status.h"
 #include "audio.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-TowerUpgradeTree tower1UpgradeTree;
-
-Texture2D upgradeIcon_AttackSpeedBase = {0};
-Texture2D upgradeIcon_AttackPowerBase = {0};
-Texture2D upgradeIcon_SpecialEffectBase = {0};
-Texture2D upgradeIcon_LightningAttack = {0};
-Texture2D upgradeIcon_ChainAttack = {0};
-Texture2D upgradeIcon_AreaAttack = {0};
-Texture2D upgradeIcon_CriticalAttack = {0};
-Texture2D upgradeIcon_StunEffect = {0};
-Texture2D upgradeIcon_WideChainRange = {0};
-Texture2D upgradeIcon_LargeAoERadius = {0};
-Texture2D upgradeIcon_HighCritChance = {0};
-Texture2D upgradeIcon_LethalPoison = {0};
-Texture2D upgradeIcon_MassSlow = {0};
-Texture2D acceptIconTex = { 0 };
-
-UpgradeNode* pendingUpgradeNode = NULL;
-Vector2 pendingUpgradeIconPos = { 0 };
-
+static Texture2D upgradeIcon_AttackSpeedBase = {0};
+static Texture2D upgradeIcon_AttackPowerBase = {0};
+static Texture2D upgradeIcon_SpecialEffectBase = {0};
+static Texture2D upgradeIcon_LightningAttack = {0};
+static Texture2D upgradeIcon_ChainAttack = {0};
+static Texture2D upgradeIcon_AreaAttack = {0};
+static Texture2D upgradeIcon_CriticalAttack = {0};
+static Texture2D upgradeIcon_StunEffect = {0};
+static Texture2D upgradeIcon_WideChainRange = {0};
+static Texture2D upgradeIcon_LargeAoERadius = {0};
+static Texture2D upgradeIcon_HighCritChance = {0};
+static Texture2D upgradeIcon_LethalPoison = {0};
+static Texture2D upgradeIcon_MassSlow = {0};
+static Texture2D acceptIconTex = { 0 };
 static Texture2D lockedIconTex;
-static Texture2D unlockedIconTex;
-static Texture2D purchasedIconTex;
-static Texture2D excludedIconTex;
-
 static UpgradeNode *currentOrbitParentNode = NULL;
 static UpgradeNode *prevOrbitParentNode = NULL;
+
+TowerUpgradeTree tower1UpgradeTree;
+UpgradeNode* pendingUpgradeNode = NULL;
+Vector2 pendingUpgradeIconPos = { 0 };
 
 /*
 I.S : Parameter-parameter seperti type, name, desc, cost, parent, dan exclusiveGroupId telah siap untuk digunakan dalam pembuatan node baru.
@@ -74,9 +64,6 @@ UpgradeNode *CreateUpgradeNode(UpgradeType type, const char *name, const char *d
 void InitUpgradeTree(TowerUpgradeTree *tree, TowerType type)
 {
     lockedIconTex = LoadTextureSafe("assets/img/upgrade_imgs/locked.png");
-    unlockedIconTex = LoadTextureSafe("assets/img/upgrade_imgs/unlocked.png");
-    purchasedIconTex = LoadTextureSafe("assets/img/upgrade_imgs/purchased.png");
-    excludedIconTex = LoadTextureSafe("assets/img/upgrade_imgs/excluded.png"); 
     
     upgradeIcon_AttackSpeedBase = LoadTextureSafe("assets/img/upgrade_imgs/speed_upgrade.png"); 
     upgradeIcon_AttackPowerBase = LoadTextureSafe("assets/img/upgrade_imgs/power_upgrade.png"); 
@@ -186,6 +173,34 @@ static bool IsExclusiveSiblingPurchased(const UpgradeNode *node, const struct To
     return false; 
 }
 
+// Fungsi rekursif internal untuk menelusuri pohon
+static UpgradeNode* FindCurrentUpgradeNode_Recursive(UpgradeNode* currentNode, const struct Tower* tower) {
+    if (!currentNode || !tower) return NULL;
+
+    // Cek apakah ada anak dari node ini yang sudah dibeli
+    for (int i = 0; i < currentNode->numChildren; i++) {
+        UpgradeNode* child = currentNode->children[i];
+        if (child && tower->purchasedUpgrades[child->type]) {
+            // Jika ada, lanjutkan pencarian dari anak tersebut
+            return FindCurrentUpgradeNode_Recursive(child, tower);
+        }
+    }
+
+    // Jika tidak ada anak yang dibeli, berarti ini adalah node terakhir.
+    // Kita juga harus memastikan node ini sendiri sudah dibeli (atau merupakan root)
+    if (tower->purchasedUpgrades[currentNode->type] || currentNode->parent == NULL) {
+        return currentNode;
+    }
+
+    return currentNode->parent; // Fallback jika terjadi kondisi aneh
+}
+
+// Fungsi publik yang akan dipanggil dari luar
+UpgradeNode* FindCurrentUpgradeNode(const struct Tower* tower) {
+    if (!tower || !tower1UpgradeTree.root) return NULL;
+    return FindCurrentUpgradeNode_Recursive(tower1UpgradeTree.root, tower);
+}
+
 /* I.S. : Status dari 'node' dan semua turunannya mungkin belum sesuai dengan kondisi 'tower' saat ini.
    F.S. : Status dari 'node' dan semua turunannya telah diperbarui. */
 static void UpdateAllNodesRecursive(UpgradeNode* node, const struct Tower* tower) {
@@ -246,22 +261,6 @@ void NavigateUpgradeOrbit(UpgradeNode *targetNode)
     prevOrbitParentNode = currentOrbitParentNode;
     currentOrbitParentNode = targetNode;
     TraceLog(LOG_INFO, "Navigated to orbit node: %s", targetNode->name);
-}
-
-/* I.S. : Menu orbit menampilkan anak-anak dari sebuah node.
-   F.S. : Tampilan menu orbit berpindah kembali ke parent dari node saat ini. */
-void NavigateUpgradeOrbitBack(void)
-{
-    if (currentOrbitParentNode && currentOrbitParentNode->parent)
-    {
-        prevOrbitParentNode = currentOrbitParentNode;
-        currentOrbitParentNode = currentOrbitParentNode->parent;
-        TraceLog(LOG_INFO, "Navigated back to orbit node: %s", currentOrbitParentNode->name);
-    }
-    else
-    {
-        TraceLog(LOG_WARNING, "Cannot navigate back from root orbit node.");
-    }
 }
 
 /* I.S. : 'tower' memiliki status (damage, speed, dll.) sebelum upgrade.
@@ -378,6 +377,7 @@ bool HandleUpgradeOrbitClick(Vector2 mousePos, float currentTileScale)
                 Push(&statusStack, TextFormat("Upgraded: %s", pendingUpgradeNode->name));
                 ApplyUpgradeEffect(selectedTowerForDeletion, pendingUpgradeNode->type);
                 AddMoney(-(pendingUpgradeNode->cost));
+                PlaySpendMoneySound(); // <-- PANGGIL DI SINI
                 UpdateUpgradeTreeStatus(&tower1UpgradeTree, selectedTowerForDeletion);
  
                 if (GetNumChildren(pendingUpgradeNode) > 0) {
@@ -393,18 +393,21 @@ bool HandleUpgradeOrbitClick(Vector2 mousePos, float currentTileScale)
 
     Vector2 orbitCenter = towerSelectionUIPos;
     float orbitRadius = TILE_SIZE * currentTileScale * ORBIT_RADIUS_TILE_FACTOR;
+    float sellBtnSize = 20.0f * currentTileScale;
+    Rectangle sellBtnRect = {
+        orbitCenter.x - sellBtnSize / 2.0f,
+        orbitCenter.y - sellBtnSize / 2.0f,
+        sellBtnSize,
+        sellBtnSize
+    };
+    if (CheckCollisionPointRec(mousePos, sellBtnRect)) {
+        SellTower(selectedTowerForDeletion);
+        // HideTowerSelectionUI() akan dipanggil di dalam SellTower -> RemoveTower
+        return true; // Klik sudah ditangani
+    }
     UpgradeNode *parentNode = GetCurrentOrbitParentNode();
     int numChildren = GetNumChildren(parentNode);
     int totalButtons = numChildren + (parentNode->parent != NULL ? 1 : 0);
-    
-    if (parentNode->parent != NULL) {
-        Rectangle backButtonRect = GetOrbitButtonRect(orbitCenter, orbitRadius, numChildren, totalButtons, ORBIT_BUTTON_DRAW_SCALE, deleteButtonTex);
-        if (CheckCollisionPointRec(mousePos, backButtonRect)) {
-            pendingUpgradeNode = NULL; 
-            NavigateUpgradeOrbitBack();
-            return true; 
-        }
-    }
 
     for (int i = 0; i < numChildren; i++) {
         UpgradeNode *childNode = GetNthChild(parentNode, i);
@@ -463,6 +466,18 @@ void DrawUpgradeOrbitMenu(float currentTileScale, float mapScreenOffsetX, float 
     float orbitRadius = TILE_SIZE * currentTileScale * ORBIT_RADIUS_TILE_FACTOR;
     
     DrawCircleLines((int)orbitCenter.x, (int)orbitCenter.y, orbitRadius, RAYWHITE);
+
+    if (deleteButtonTex.id != 0) {
+        float sellBtnSize = 20.0f * currentTileScale;
+        Rectangle sellBtnRect = {
+            orbitCenter.x - sellBtnSize / 2.0f,
+            orbitCenter.y - sellBtnSize / 2.0f,
+            sellBtnSize,
+            sellBtnSize
+        };
+        DrawTexturePro(deleteButtonTex, (Rectangle){0,0,(float)deleteButtonTex.width, (float)deleteButtonTex.height}, sellBtnRect, (Vector2){0,0}, 0.0f, WHITE);
+    }
+
     UpdateUpgradeTreeStatus(&tower1UpgradeTree, selectedTowerForDeletion);
 
     UpgradeNode *parentNode = currentOrbitParentNode;
@@ -476,16 +491,6 @@ void DrawUpgradeOrbitMenu(float currentTileScale, float mapScreenOffsetX, float 
         if (!childNode) continue;
 
         Rectangle buttonRect = GetOrbitButtonRect(orbitCenter, orbitRadius, i, totalButtons, ORBIT_BUTTON_DRAW_SCALE, upgradeButtonTex);
-
-        Texture2D iconStatusToDraw;
-        switch (childNode->status)
-        {
-            case UPGRADE_LOCKED: iconStatusToDraw = lockedIconTex; break;
-            case UPGRADE_UNLOCKED: iconStatusToDraw = unlockedIconTex; break;
-            case UPGRADE_PURCHASED: iconStatusToDraw = purchasedIconTex; break;
-            case UPGRADE_LOCKED_EXCLUDED: iconStatusToDraw = excludedIconTex; break;
-            default: iconStatusToDraw = (Texture2D){0}; break;
-        }
         
         Texture2D upgradeIcon = GetUpgradeIconTexture(childNode->type);
         if (upgradeIcon.id != 0)
@@ -498,21 +503,6 @@ void DrawUpgradeOrbitMenu(float currentTileScale, float mapScreenOffsetX, float 
                 iconDrawSize};
             DrawTexturePro(upgradeIcon, (Rectangle){0, 0, (float)upgradeIcon.width, (float)upgradeIcon.height}, iconDestRect, (Vector2){0, 0}, 0.0f, WHITE);
         }
-       
-        float statusIconSize = buttonRect.width * 0.35f;
-        Rectangle statusIconDestRect = {buttonRect.x + buttonRect.width - statusIconSize, buttonRect.y, statusIconSize, statusIconSize};
-        if (iconStatusToDraw.id != 0)
-        {
-            DrawTexturePro(iconStatusToDraw, (Rectangle){0, 0, (float)iconStatusToDraw.width, (float)iconStatusToDraw.height}, statusIconDestRect, (Vector2){0, 0}, 0.0f, WHITE);
-        }
-    }
-   
-    if (parentNode->parent != NULL)
-    {        
-        Rectangle backButtonRect = GetOrbitButtonRect(orbitCenter, orbitRadius, numChildren, totalButtons, ORBIT_BUTTON_DRAW_SCALE * 0.8f, deleteButtonTex); 
-        DrawRectangleRec(backButtonRect, DARKBLUE);
-        DrawRectangleLinesEx(backButtonRect, 2, RAYWHITE);
-        DrawText("Back", backButtonRect.x + 15, backButtonRect.y + 20, 20, WHITE);
     }
     if (pendingUpgradeNode != NULL) {
         float iconSize = 16.0f * currentTileScale;
@@ -525,6 +515,8 @@ void DrawUpgradeOrbitMenu(float currentTileScale, float mapScreenOffsetX, float 
         DrawTexturePro(acceptIconTex, (Rectangle){0,0, (float)acceptIconTex.width, (float)acceptIconTex.height}, destRect, (Vector2){0,0}, 0.0f, WHITE);
     }
 }
+
+
 /* I.S. : 'node' dan semua turunannya mungkin masih dialokasikan di memori.
  * F.S. : Memori untuk 'node' dan semua turunannya telah dibebaskan. */
 static void FreeUpgradeNode(UpgradeNode* node) {

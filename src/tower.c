@@ -94,8 +94,9 @@ void ShowTowerOrbitUI(Tower *tower, float currentTileScale, float mapScreenOffse
     isTowerSelectionUIVisible = true;
     deleteButtonVisible = true; 
 
-    ResetUpgradeOrbit(); 
-
+    UpgradeNode* startNode = FindCurrentUpgradeNode(tower);
+    SetCurrentOrbitParentNode(startNode);
+    
     TraceLog(LOG_INFO, "Displaying tower orbit UI for tower at (%d, %d).", tower->row, tower->col);
 }
 

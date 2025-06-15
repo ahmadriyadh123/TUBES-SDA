@@ -38,6 +38,10 @@ F.S:  Keadaan akhir: Peta dirender ke tampilan.
 */
 void DrawMap(float globalScale, float offsetX, float offsetY);
 
+/* I.S. : gameMap belum diganti`defaultGameMap` yang berisi data peta asli yang tidak pernah berubah.
+   F.S. : Isi dari `gameMap` telah sepenuhnya ditimpa dan sekarang menjadi salinan identik dari `defaultGameMap`*/
+void ResetMapToDefault();
+
 // Mengembalikan persegi untuk ubin berdasarkan indeksnya.
 // Nilai pengembalian: persegi panjang yang menentukan posisi ubin di tilesheet.
 Rectangle GetTileSourceRect(int index);

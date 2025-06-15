@@ -6,10 +6,8 @@
 * Perubahan terakhir : Sabtu, 30 Mei 2025
 */
 
-#include "raylib.h"
 #include "transition.h"
 #include "main_menu.h" 
-#include <string.h>
 
 void PlayTransitionAnimation(GameState targetState) { 
     const int screenWidth = GetScreenWidth();
