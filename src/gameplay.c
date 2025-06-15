@@ -23,59 +23,20 @@
 // I.S. : Aset gameplay belum dimuat.
 // F.S. : Semua tekstur, data tower, musuh, dll., telah dimuat dan siap digunakan.
 void InitGameplay(void) {
+    if (gameplayInitialized) return;
+    TraceLog(LOG_INFO, "GAMEPLAY: Initializing assets...");
+
     Enemies_InitAssets();
     InitMapAssets();          
     InitTowerAssets(); 
     InitUpgradeTree(&tower1UpgradeTree, TOWER_TYPE_1);
+
     moneyIconTex = LoadTexture("assets/img/gameplay_imgs/coin.png");
     lifeIconTex = LoadTexture("assets/img/gameplay_imgs/heart.png");
     pauseButtonTex = LoadTexture("assets/img/gameplay_imgs/pause_button.png"); 
-    mousePos = GetMousePosition();
-    
-    for(int i = 0; i < activeWavesCount; ++i) { FreeWave(&activeWaves[i]); }
-    activeWavesCount = 0;  
-    timeToNextWave = -1.0f;
-    currentWaveNum = 1;
-    
-    if (selectedCustomMapIndex != -1) {
-        const char* mapToLoad = customMaps[selectedCustomMapIndex].filePath;
-        if (LoadLevelFromFile(mapToLoad)) {
-            StrCopySafe(currentMapName, GetFileNameWithoutExt(mapToLoad), sizeof(currentMapName));
-            TraceLog(LOG_INFO, "Gameplay initialized from Custom Map: %s", currentMapName);
-        } else {
-            StrCopySafe(currentMapName, "Default Map", sizeof(currentMapName));
-            TraceLog(LOG_WARNING, "Failed to load custom map, using Default Map");
-            currentGameState = MAIN_MENU;
-            return;
-        }
-    } else {
-        const char* editorFile = GetEditorMapFileName(); 
-        if (editorFile && strcmp(editorFile, "maps/map.txt") != 0) {
-            StrCopySafe(currentMapName, GetFileNameWithoutExt(editorFile), sizeof(currentMapName));
-            TraceLog(LOG_INFO, "Gameplay started from Level Editor save: %s", currentMapName);
-        } else {
-            
-            SetEditorStartRow(-1); SetEditorStartCol(-1);
-            StrCopySafe(currentMapName, "Default Map", sizeof(currentMapName));
-            TraceLog(LOG_INFO, "Gameplay started with Default Map.");
-        }
-    }
-        if (strlen(currentMapName) == 0) {
-            StrCopySafe(currentMapName, "Default Map", sizeof(currentMapName));
-            TraceLog(LOG_WARNING, "currentMapName was empty, set to Default Map");
-        }
-    int startRow = GetEditorStartRow();
-    int startCol = GetEditorStartCol();
-    if (startRow == -1 || startCol == -1) { startRow = 0; startCol = 4; }
-    
-    EnemyWave* firstWave = CreateWave(startRow, startCol); 
-    if (firstWave) {
-        activeWaves[activeWavesCount++] = firstWave;
-    }
-    SetMoney(200); 
-    SetLife(10);   
+
     gameplayInitialized = true;
-    selectedCustomMapIndex = -1; 
+
     TraceLog(LOG_INFO, "Gameplay initialized. First wave created.");
 }
 
