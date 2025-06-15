@@ -34,6 +34,20 @@ void UpdateGameplay(float deltaTime);
 //  F.S. : Aksi yang sesuai dengan input pemain (membangun, upgrade, menjual) telah dieksekusi.
 void HandleGameplayInput(Vector2 mousePos);
 
+// I.S. : Permainan dalam state GAME_PAUSED, menunggu input pemain.
+// F.S. : Memproses klik mouse pada tombol "Resume", "Restart", atau "Main Menu".
+//        currentGameState akan diubah sesuai dengan tombol yang diklik. */
+void UpdatePauseMenu();
+
+// I.S. : Permainan dalam state GAME_PAUSED.
+// F.S. : Overlay gelap dan panel menu jeda dengan semua tombolnya telah
+//  digambar di atas tampilan gameplay yang dijeda. */
+void DrawPauseMenu();
+
+// I.S. : Elemen-elemen HUD belum digambar untuk frame ini.
+// F.S. : Seluruh elemen HUD telah digambar dengan rapi di posisinya masing-masing.
+void DrawHUD(const char* mapName, int money, int life, Vector2 mousePos);
+
 // I.S. : State semua entitas game siap untuk digambar.
 // F.S. : Peta, musuh, tower, proyektil, dan HUD telah digambar.
 void DrawGameplay(void);
