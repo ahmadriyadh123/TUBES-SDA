@@ -79,6 +79,69 @@ void InitGameplay(void) {
     TraceLog(LOG_INFO, "Gameplay initialized. First wave created.");
 }
 
+// I.S. : Permainan mungkin sedang berjalan atau belum dimulai.
+// F.S. : Semua state (uang, nyawa, tower, musuh) di-reset ke kondisi awal,
+// dan permainan dimulai pada state GAMEPLAY.
+void RestartGameplay(void) {
+    TraceLog(LOG_INFO, "GAMEPLAY: Starting/Restarting session...");
+    InitGameplay();
+    
+    // Pembersihan Entitas Game (untuk restart)
+    for (int i = 0; i < activeWavesCount; ++i) { FreeWave(&activeWaves[i]); }
+    activeWavesCount = 0;
+    
+    Tower *currentTower = towersListHead;
+    while (currentTower != NULL) {
+        Tower *next = (Tower *)currentTower->next;
+        RemoveTower(currentTower);
+        currentTower = next;
+    }
+    towersListHead = NULL;
+    
+    if (allActiveEnemies != NULL) {
+        for (int i = 0; i < maxTotalActiveEnemies; i++) {
+            allActiveEnemies[i].active = false;
+        }
+    }
+    totalActiveEnemiesCount = 0;
+    
+    HideTowerSelectionUI();
+    ResetUpgradeOrbit();
+    CreateStatus(&statusStack);
+    SetMoney(200);
+    SetLife(10);
+    currentWaveNum = 1;
+    timeToNextWave = -1.0f;
+    
+    //Menentukan peta yang akan digunakan setelah restart
+    if (selectedCustomMapIndex != -1) {
+        
+        const char* mapToLoad = customMaps[selectedCustomMapIndex].filePath;
+        LoadLevelFromFile(mapToLoad);
+        StrCopySafe(currentMapName, GetFileNameWithoutExt(mapToLoad), sizeof(currentMapName));
+    } else {
+        
+        const char* editorFile = GetEditorMapFileName();
+        if (editorFile && strcmp(editorFile, "maps/map.txt") != 0 && strlen(editorFile) > 0) {
+            StrCopySafe(currentMapName, GetFileNameWithoutExt(editorFile), sizeof(currentMapName));
+        } else {
+            StrCopySafe(currentMapName, "Default Map", sizeof(currentMapName));
+        }
+    }
+    TraceLog(LOG_INFO, "RestartGameplay: Map name set to '%s'", currentMapName);
+    
+    int startRow = GetEditorStartRow();
+    int startCol = GetEditorStartCol();
+    if (startRow == -1 || startCol == -1) { startRow = 0; startCol = 4; } 
+
+    // Membuat objek gelombang musuh pertama dan menambahkannya ke daftar gelombang aktif.
+    EnemyWave* firstWave = CreateWave(startRow, startCol);
+    if (firstWave) {
+        activeWaves[activeWavesCount++] = firstWave;
+    }
+    currentGameState = GAMEPLAY;
+}
+
 // I.S. : State semua entitas game (musuh, tower, wave) pada frame sebelumnya.
 // F.S. : State semua entitas game telah diperbarui.
 void UpdateGameplay(float deltaTime) {
