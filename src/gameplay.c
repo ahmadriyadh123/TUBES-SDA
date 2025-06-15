@@ -252,32 +252,111 @@ void UpdateGameplay(float deltaTime) {
 
 //  I.S. : Menunggu input klik dari pemain.
 //  F.S. : Aksi yang sesuai dengan input pemain (membangun, upgrade, menjual) telah dieksekusi.
-void HandleGameplayInput(Vector2 mousePos) {
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        bool clickHandled = false;
-        float pauseBtnSize = 100.0f;
-        Rectangle pauseBtnRect = { VIRTUAL_WIDTH - pauseBtnSize - 15, 30, pauseBtnSize, pauseBtnSize };
-        // Memeriksa apakah tombol pause diklik
-        if (CheckCollisionPointRec(mousePos, pauseBtnRect)) {
-            previousGameState = currentGameState;
-            currentGameState = GAME_PAUSED;
+void HandleGameplayInput(Vector2 mousePos) 
+{
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) 
+    {
+            bool clickHandled = false;
+            float pauseBtnSize = 100.0f;
+            Rectangle pauseBtnRect = { VIRTUAL_WIDTH - pauseBtnSize - 15, 30, pauseBtnSize, pauseBtnSize };
+            // Memeriksa apakah tombol pause diklik
+            if (CheckCollisionPointRec(mousePos, pauseBtnRect)) {
+                previousGameState = currentGameState;
+                currentGameState = GAME_PAUSED;
+            }
+        //Mempercepat timer gelombang jika pemain mengklik timer yang terlihat 
+        for (int i = 0; i < activeWavesCount; i++) {
+            EnemyWave* wave = activeWaves[i];
+            if (wave && wave->timerVisible) {
+                Rectangle timerAreaRect = { 
+                    mapScreenOffsetX + GetTimerMapCol(wave) * TILE_SIZE * currentTileScale, 
+                    mapScreenOffsetY + GetTimerMapRow(wave) * TILE_SIZE * currentTileScale, 
+                    TILE_SIZE * currentTileScale, 
+                    TILE_SIZE * currentTileScale 
+                };
+                if (CheckCollisionPointRec(mousePos, timerAreaRect)) {
+                    
+                    SetWaveTimerCurrentTime(wave, GetWaveTimerDuration(wave));
+                    Push(&statusStack, "Wave accelerated!");
+                    return; 
+                }
+            }
         }
-    //Mempercepat timer gelombang jika pemain mengklik timer yang terlihat 
-    for (int i = 0; i < activeWavesCount; i++) {
-        EnemyWave* wave = activeWaves[i];
-        if (wave && wave->timerVisible) {
-            Rectangle timerAreaRect = { 
-                mapScreenOffsetX + GetTimerMapCol(wave) * TILE_SIZE * currentTileScale, 
-                mapScreenOffsetY + GetTimerMapRow(wave) * TILE_SIZE * currentTileScale, 
-                TILE_SIZE * currentTileScale, 
-                TILE_SIZE * currentTileScale 
-            };
-            if (CheckCollisionPointRec(mousePos, timerAreaRect)) {
-                
-                SetWaveTimerCurrentTime(wave, GetWaveTimerDuration(wave));
-                Push(&statusStack, "Wave accelerated!");
-                return; 
+        //Mengelola klik pada menu orbit tower (sell/upgrade) dan navigasi di pohon upgrade
+        if (selectedTowerForDeletion != NULL) {
+            if (GetCurrentOrbitParentNode() != NULL) {
+                clickHandled = HandleUpgradeOrbitClick(mousePos, currentTileScale);
+            }
+            else {
+                Vector2 orbitCenter = towerSelectionUIPos;
+                float orbitRadius = TILE_SIZE * currentTileScale * ORBIT_RADIUS_TILE_FACTOR;
+                Rectangle deleteBtnRect = GetOrbitButtonRect(orbitCenter, orbitRadius, 0, 2, ORBIT_BUTTON_DRAW_SCALE, deleteButtonTex);
+                Rectangle upgradeBtnRect = GetOrbitButtonRect(orbitCenter, orbitRadius, 1, 2, ORBIT_BUTTON_DRAW_SCALE, upgradeButtonTex);
+                if (CheckCollisionPointRec(mousePos, deleteBtnRect)) {
+                    SellTower(selectedTowerForDeletion);
+                    HideTowerSelectionUI(); 
+                    clickHandled = true;
+                } else if (CheckCollisionPointRec(mousePos, upgradeBtnRect)) {
+                    SetCurrentOrbitParentNode(GetUpgradeTreeRoot(&tower1UpgradeTree));
+                    clickHandled = true;
+                }
+            }
+            if (!clickHandled) {
+                HideTowerSelectionUI();
+            }
+        }
+        else {
+            //Jika tidak ada UI orbit yang aktif, periksa klik pada tower yang sudah ada 
+            // atau coba tempatkan tower baru di petak kosong
+            Tower* clickedTower = NULL;
+            Tower* currentTowerNode = towersListHead;
+                while (currentTowerNode != NULL) {
+                    float towerDrawWidth = currentTowerNode->frameWidth * TOWER_DRAW_SCALE * currentTileScale;
+                    float towerDrawHeight = currentTowerNode->frameHeight * TOWER_DRAW_SCALE * currentTileScale;
+                    Rectangle towerClickRect = {
+                        mapScreenOffsetX + (currentTowerNode->position.x * currentTileScale) - (towerDrawWidth / 2.0f),
+                        mapScreenOffsetY + (currentTowerNode->position.y * currentTileScale) - towerDrawHeight + (TOWER_Y_OFFSET_PIXELS * currentTileScale),
+                        towerDrawWidth, towerDrawHeight
+                    };
+                    if (CheckCollisionPointRec(mousePos, towerClickRect)) {
+                        ShowTowerOrbitUI(currentTowerNode, currentTileScale, mapScreenOffsetX, mapScreenOffsetY); 
+                        clickHandled = true; 
+                        return; 
+                    }
+                currentTowerNode = (Tower*)currentTowerNode->next;
+            }
+            if (clickedTower) {
+                ShowTowerOrbitUI(clickedTower, currentTileScale, mapScreenOffsetX, mapScreenOffsetY);
+                clickHandled = true;
+            }
+        }
+        // Jika tidak ada menara yang ada diklik, menempatkan yang baru
+        if (!clickHandled) {
+            int col = (int)((mousePos.x - mapScreenOffsetX) / (TILE_SIZE * currentTileScale));
+            int row = (int)((mousePos.y - mapScreenOffsetY) / (TILE_SIZE * currentTileScale));
+            if (row >= 0 && row < MAP_ROWS && col >= 0 && col < MAP_COLS && GetMapTile(row, col) == 4 && GetTowerAtMapCoord(row, col) == NULL) {
+                PlaceTower(row, col, TOWER_TYPE_1);
             }
         }
     }
+}
+
+// I.S. : State semua entitas game siap untuk digambar.
+// F.S. : Peta, musuh, tower, proyektil, dan HUD telah digambar.
+void DrawGameplay(void) {
+    if (!gameplayInitialized) return;
+    DrawMap(currentTileScale, mapScreenOffsetX, mapScreenOffsetY);
+    if (totalActiveEnemiesCount > 0)
+    {
+        Enemies_Draw(currentTileScale, mapScreenOffsetX, mapScreenOffsetY);
+    }
+    DrawTowers(currentTileScale, mapScreenOffsetX, mapScreenOffsetY);
+    DrawUpgradeOrbitMenu(currentTileScale, mapScreenOffsetX, mapScreenOffsetY);
+    for (int i = 0; i < activeWavesCount; i++) {
+        EnemyWave* wave = activeWaves[i];
+        DrawGameTimer(wave, currentTileScale, mapScreenOffsetX, mapScreenOffsetY, GetTimerMapRow(wave), GetTimerMapCol(wave));
+    }
+    DrawShots(currentTileScale, mapScreenOffsetX, mapScreenOffsetY); 
+    DrawHUD(currentMapName, GetMoney(), GetLife(), GetMousePosition());
+    DrawStatus(statusStack);
 }
