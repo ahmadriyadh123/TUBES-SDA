@@ -395,6 +395,68 @@ void DrawPauseMenu(){
     DrawText("Main Menu", menuBtn.x + (menuBtn.width - MeasureText("Main Menu", 30)) / 2, menuBtn.y + 10, 30, BLACK);
 }
 
+// I.S. : Elemen-elemen HUD belum digambar untuk frame ini.
+// F.S. : Seluruh elemen HUD telah digambar dengan rapi di posisinya masing-masing.
+void DrawHUD(const char* mapName, int money, int life, Vector2 mousePos) {  
+    const char *moneyText = TextFormat("%d", GetMoney());
+    const char *lifeText = TextFormat("%d", GetLife());
+    int fontSize = 24;
+    float padding = 10.0f;
+    float spacing = 8.0f;
+    float iconSize = 28.0f;
+    float moneyTextWidth = MeasureText(moneyText, fontSize);
+    float lifeTextWidth = MeasureText(lifeText, fontSize);
+    float moneyBlockWidth = iconSize + spacing + moneyTextWidth;
+    float lifeBlockWidth = iconSize + spacing + lifeTextWidth;
+    float panelstatusWidth = padding + moneyBlockWidth + (padding * 2) + lifeBlockWidth + padding;
+    float panelstatusHeight = iconSize + padding * 2;
+    float panelstatusX = (VIRTUAL_WIDTH- panelstatusWidth) / 2.0f;
+    float panelstatusY = 15.0f;
+    DrawRectangleRounded(
+        (Rectangle){panelstatusX, panelstatusY, panelstatusWidth, panelstatusHeight}, 
+        0.3f, 10, Fade(BLACK, 0.6f)
+    );
+    float moneyIconX = panelstatusX + padding;
+    float moneyIconY = panelstatusY + (panelstatusHeight - iconSize) / 2.0f;
+    if (moneyIconTex.id > 0) {
+        DrawTextureEx(moneyIconTex, (Vector2){moneyIconX, moneyIconY}, 0.0f, iconSize / moneyIconTex.height, WHITE);
+    }
+    DrawText(moneyText, moneyIconX + iconSize + spacing, panelstatusY + (panelstatusHeight - fontSize) / 2.0f, fontSize, WHITE);
+    float lifeIconX = panelstatusX + padding + moneyBlockWidth + (padding * 2);
+    float lifeIconY = panelstatusY + (panelstatusHeight - iconSize) / 2.0f;
+    if (lifeIconTex.id > 0) {
+        DrawTextureEx(lifeIconTex, (Vector2){lifeIconX, lifeIconY}, 0.0f, iconSize / lifeIconTex.height, WHITE);
+    }
+    DrawText(lifeText, lifeIconX + iconSize + spacing, panelstatusY + (panelstatusHeight - fontSize) / 2.0f, fontSize, WHITE);
+    
+    float mapNameFontSize = 20;
+    float mapNamePadding = 10.0f;
+    float mapNameWidth = MeasureText(currentMapName, mapNameFontSize) + mapNamePadding * 2;
+    float mapNameHeight = mapNameFontSize + mapNamePadding * 2;
+    float mapNameX = panelstatusX + (panelstatusWidth - mapNameWidth) / 2.0f; 
+    float mapNameY = panelstatusY + panelstatusHeight + mapNamePadding; 
+    DrawRectangleRounded(
+        (Rectangle){mapNameX, mapNameY, mapNameWidth, mapNameHeight},
+        0.3f, 10, Fade(BLACK, 0.6f)
+    );
+    DrawText(
+        currentMapName,
+        mapNameX + mapNamePadding,
+        mapNameY + mapNamePadding,
+        mapNameFontSize,
+        WHITE
+    );
+    float pauseBtnSize = 100.0f;
+    Rectangle pauseBtnRect = { VIRTUAL_WIDTH - pauseBtnSize - 15, 30, pauseBtnSize, pauseBtnSize };
+    if (pauseButtonTex.id > 0) {
+        Color tint = CheckCollisionPointRec(mousePos, pauseBtnRect) ? Fade(WHITE, 0.8f) : WHITE;
+        DrawTextureEx(pauseButtonTex, (Vector2){pauseBtnRect.x, pauseBtnRect.y}, 0.0f, pauseBtnSize / pauseButtonTex.width, tint);
+    } else {
+        Color rectColor = CheckCollisionPointRec(mousePos, pauseBtnRect) ? Fade(RED, 0.8f) : RED;
+        DrawRectangleRec(pauseBtnRect, rectColor);
+    }
+}
+
 // I.S. : State semua entitas game siap untuk digambar.
 // F.S. : Peta, musuh, tower, proyektil, dan HUD telah digambar.
 void DrawGameplay(void) {
