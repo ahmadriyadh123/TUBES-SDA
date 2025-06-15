@@ -20,6 +20,24 @@
 #include "audio.h"
 #include "utils.h"
 
+char currentMapName[256]; 
+bool gameplayInitialized = false;
+static EnemyWave* activeWaves[MAX_ACTIVE_WAVES] = {0};
+static int activeWavesCount = 0;
+static float timeToNextWave = -1.0f;
+
+float currentTileScale = 1.0f;
+float mapScreenOffsetX = 0.0f;
+float mapScreenOffsetY = 0.0f;
+
+static GameState previousGameState;
+static Texture2D moneyIconTex;
+static Texture2D lifeIconTex;
+static Texture2D pauseButtonTex;
+static int maxWavesForCurrentLevel = -1;
+
+Vector2 mousePos = {0};
+
 // I.S. : Aset gameplay belum dimuat.
 // F.S. : Semua tekstur, data tower, musuh, dll., telah dimuat dan siap digunakan.
 void InitGameplay(void) {

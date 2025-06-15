@@ -8,16 +8,13 @@
 int main() {
     
     InitWindow(VIRTUAL_WIDTH, VIRTUAL_HEIGHT, "Tower Defense");
-
     SetTargetFPS(60); 
-
     SetTraceLogLevel(LOG_INFO); 
     
     LoadMainMenuResources();  
     InitGameplay();
     InitSettingsMenu();
     InitGameAudio(); 
-    PlayRegularMusic();
 
     while (!WindowShouldClose() && currentGameState != EXITING) {
         float deltaTime = GetFrameTime(); 
@@ -28,6 +25,11 @@ int main() {
         UpdateGameAudio();
         switch (currentGameState){
         case MAIN_MENU:
+            PlayRegularMusic();
+            selectedCustomMapIndex = -1; 
+            SetEditorStartRow(-1);
+            SetEditorStartCol(-1);
+            SetEditorMapFileName("maps/map.txt"); 
             HandleMainMenuInput();
             DrawMainMenu();
             break;
@@ -70,7 +72,6 @@ int main() {
             }
             DrawGameplay(); 
             DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, Fade(BLACK, 0.6f));
-            
             DrawText("LEVEL COMPLETE!", VIRTUAL_WIDTH / 2 - MeasureText("LEVEL COMPLETE!", 60) / 2, VIRTUAL_HEIGHT / 2 - 40, 60, GOLD);
             DrawText("Click or Press Enter to return to Main Menu", VIRTUAL_WIDTH / 2 - MeasureText("Click or Press Enter to return to Main Menu", 20) / 2, VIRTUAL_HEIGHT / 2 + 40, 20, LIGHTGRAY);
             break;
