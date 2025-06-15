@@ -341,6 +341,60 @@ void HandleGameplayInput(Vector2 mousePos)
     }
 }
 
+// I.S. : Permainan dalam state GAME_PAUSED, menunggu input pemain.
+// F.S. : Memproses klik mouse pada tombol "Resume", "Restart", atau "Main Menu".
+//        currentGameState akan diubah sesuai dengan tombol yang diklik. 
+void UpdatePauseMenu(void) {
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        float panelWidth = 300;
+        float panelHeight = 280;
+        float panelX = (VIRTUAL_WIDTH- panelWidth) / 2.0f;
+        float panelY = (VIRTUAL_HEIGHT- panelHeight) / 2.0f;
+        Rectangle resumeBtn = { panelX + 50, panelY + 50, 200, 50 };
+        Rectangle restartBtn = { panelX + 50, panelY + 110, 200, 50 };
+        Rectangle menuBtn = { panelX + 50, panelY + 170, 200, 50 };
+        if (CheckCollisionPointRec(mousePos, resumeBtn)) {
+            currentGameState = previousGameState; 
+        } else if (CheckCollisionPointRec(mousePos, restartBtn)) {
+            RestartGameplay();
+        } else if (CheckCollisionPointRec(mousePos, menuBtn)) {
+            PlayTransitionAnimation(MAIN_MENU);
+            currentGameState = MAIN_MENU;
+        }
+    }
+}
+
+// I.S. : Permainan dalam state GAME_PAUSED.
+// F.S. : Overlay gelap dan panel menu jeda dengan semua tombolnya telah
+//        digambar di atas tampilan gameplay yang dijeda.
+void DrawPauseMenu(){
+    DrawMap(currentTileScale, mapScreenOffsetX, mapScreenOffsetY);
+    DrawTowers(currentTileScale, mapScreenOffsetX, mapScreenOffsetY);
+    DrawUpgradeOrbitMenu(currentTileScale, mapScreenOffsetX, mapScreenOffsetY);
+    if (totalActiveEnemiesCount > 0) {
+        Enemies_Draw(currentTileScale, mapScreenOffsetX, mapScreenOffsetY);
+    }
+    DrawShots(currentTileScale, mapScreenOffsetX, mapScreenOffsetY);
+    DrawHUD(currentMapName, GetMoney(), GetLife(), mousePos);
+    DrawStatus(statusStack);
+    DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, Fade(BLACK, 0.6f));
+    float panelWidth = 300;
+    float panelHeight = 280;
+    float panelX = (VIRTUAL_WIDTH - panelWidth) / 2.0f;
+    float panelY = (VIRTUAL_HEIGHT - panelHeight) / 2.0f;
+    DrawRectangleRounded((Rectangle){panelX, panelY, panelWidth, panelHeight}, 0.1f, 10, RAYWHITE);
+    DrawText("Paused", panelX + (panelWidth - MeasureText("Paused", 40)) / 2, panelY + 10, 40, BLACK);
+    Rectangle resumeBtn = { panelX + 50, panelY + 70, 200, 50 };
+    DrawRectangleRec(resumeBtn, LIGHTGRAY);
+    DrawText("Resume", resumeBtn.x + (resumeBtn.width - MeasureText("Resume", 30)) / 2, resumeBtn.y + 10, 30, BLACK);
+    Rectangle restartBtn = { panelX + 50, panelY + 130, 200, 50 };
+    DrawRectangleRec(restartBtn, LIGHTGRAY);
+    DrawText("Restart", restartBtn.x + (restartBtn.width - MeasureText("Restart", 30)) / 2, restartBtn.y + 10, 30, BLACK);
+    Rectangle menuBtn = { panelX + 50, panelY + 190, 200, 50 };
+    DrawRectangleRec(menuBtn, LIGHTGRAY);
+    DrawText("Main Menu", menuBtn.x + (menuBtn.width - MeasureText("Main Menu", 30)) / 2, menuBtn.y + 10, 30, BLACK);
+}
+
 // I.S. : State semua entitas game siap untuk digambar.
 // F.S. : Peta, musuh, tower, proyektil, dan HUD telah digambar.
 void DrawGameplay(void) {
