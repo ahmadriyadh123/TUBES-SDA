@@ -20,62 +20,41 @@
 #include "audio.h"
 #include "utils.h"
 
+char currentMapName[256]; 
+bool gameplayInitialized = false;
+static EnemyWave* activeWaves[MAX_ACTIVE_WAVES] = {0};
+static int activeWavesCount = 0;
+static float timeToNextWave = -1.0f;
+
+float currentTileScale = 1.0f;
+float mapScreenOffsetX = 0.0f;
+float mapScreenOffsetY = 0.0f;
+
+static GameState previousGameState;
+static Texture2D moneyIconTex;
+static Texture2D lifeIconTex;
+static Texture2D pauseButtonTex;
+static int maxWavesForCurrentLevel = -1;
+
+Vector2 mousePos = {0};
+
 // I.S. : Aset gameplay belum dimuat.
 // F.S. : Semua tekstur, data tower, musuh, dll., telah dimuat dan siap digunakan.
 void InitGameplay(void) {
+    if (gameplayInitialized) return;
+    TraceLog(LOG_INFO, "GAMEPLAY: Initializing assets...");
+
     Enemies_InitAssets();
     InitMapAssets();          
     InitTowerAssets(); 
     InitUpgradeTree(&tower1UpgradeTree, TOWER_TYPE_1);
+
     moneyIconTex = LoadTexture("assets/img/gameplay_imgs/coin.png");
     lifeIconTex = LoadTexture("assets/img/gameplay_imgs/heart.png");
     pauseButtonTex = LoadTexture("assets/img/gameplay_imgs/pause_button.png"); 
-    mousePos = GetMousePosition();
-    
-    for(int i = 0; i < activeWavesCount; ++i) { FreeWave(&activeWaves[i]); }
-    activeWavesCount = 0;  
-    timeToNextWave = -1.0f;
-    currentWaveNum = 1;
-    
-    if (selectedCustomMapIndex != -1) {
-        const char* mapToLoad = customMaps[selectedCustomMapIndex].filePath;
-        if (LoadLevelFromFile(mapToLoad)) {
-            StrCopySafe(currentMapName, GetFileNameWithoutExt(mapToLoad), sizeof(currentMapName));
-            TraceLog(LOG_INFO, "Gameplay initialized from Custom Map: %s", currentMapName);
-        } else {
-            StrCopySafe(currentMapName, "Default Map", sizeof(currentMapName));
-            TraceLog(LOG_WARNING, "Failed to load custom map, using Default Map");
-            currentGameState = MAIN_MENU;
-            return;
-        }
-    } else {
-        const char* editorFile = GetEditorMapFileName(); 
-        if (editorFile && strcmp(editorFile, "maps/map.txt") != 0) {
-            StrCopySafe(currentMapName, GetFileNameWithoutExt(editorFile), sizeof(currentMapName));
-            TraceLog(LOG_INFO, "Gameplay started from Level Editor save: %s", currentMapName);
-        } else {
-            
-            SetEditorStartRow(-1); SetEditorStartCol(-1);
-            StrCopySafe(currentMapName, "Default Map", sizeof(currentMapName));
-            TraceLog(LOG_INFO, "Gameplay started with Default Map.");
-        }
-    }
-        if (strlen(currentMapName) == 0) {
-            StrCopySafe(currentMapName, "Default Map", sizeof(currentMapName));
-            TraceLog(LOG_WARNING, "currentMapName was empty, set to Default Map");
-        }
-    int startRow = GetEditorStartRow();
-    int startCol = GetEditorStartCol();
-    if (startRow == -1 || startCol == -1) { startRow = 0; startCol = 4; }
-    
-    EnemyWave* firstWave = CreateWave(startRow, startCol); 
-    if (firstWave) {
-        activeWaves[activeWavesCount++] = firstWave;
-    }
-    SetMoney(200); 
-    SetLife(10);   
+
     gameplayInitialized = true;
-    selectedCustomMapIndex = -1; 
+
     TraceLog(LOG_INFO, "Gameplay initialized. First wave created.");
 }
 
@@ -83,48 +62,71 @@ void InitGameplay(void) {
 // F.S. : Semua state (uang, nyawa, tower, musuh) di-reset ke kondisi awal,
 // dan permainan dimulai pada state GAMEPLAY.
 void RestartGameplay(void) {
-    TraceLog(LOG_INFO, "GAMEPLAY: Starting/Restarting session...");
+    TraceLog(LOG_INFO, "GAMEPLAY: Full restart initiated...");
     InitGameplay();
-    
-    // Pembersihan Entitas Game (untuk restart)
-    for (int i = 0; i < activeWavesCount; ++i) { FreeWave(&activeWaves[i]); }
+
+    // Bersihkan semua gelombang yang mungkin masih aktif atau ada di antrian
+    for (int i = 0; i < activeWavesCount; ++i) {
+        FreeWave(&activeWaves[i]);
+    }
     activeWavesCount = 0;
     
+    // Bersihkan semua tower yang ada di peta
     Tower *currentTower = towersListHead;
     while (currentTower != NULL) {
         Tower *next = (Tower *)currentTower->next;
-        RemoveTower(currentTower);
+        RemoveTower(currentTower); 
         currentTower = next;
     }
-    towersListHead = NULL;
+    towersListHead = NULL; 
     
     if (allActiveEnemies != NULL) {
         for (int i = 0; i < maxTotalActiveEnemies; i++) {
-            allActiveEnemies[i].active = false;
+            allActiveEnemies[i].active = false; 
         }
     }
     totalActiveEnemiesCount = 0;
-    
+
     HideTowerSelectionUI();
     ResetUpgradeOrbit();
-    CreateStatus(&statusStack);
+    CreateStatus(&statusStack);     
     SetMoney(200);
     SetLife(10);
+
     currentWaveNum = 1;
     timeToNextWave = -1.0f;
-    
+    maxWavesForCurrentLevel = -1;
+
     //Menentukan peta yang akan digunakan setelah restart
     if (selectedCustomMapIndex != -1) {
-        
+        TraceLog(LOG_ERROR, "DEBUG_TRACE (Restart): Mengambil jalur 'Custom Map'.");
         const char* mapToLoad = customMaps[selectedCustomMapIndex].filePath;
-        LoadLevelFromFile(mapToLoad);
-        StrCopySafe(currentMapName, GetFileNameWithoutExt(mapToLoad), sizeof(currentMapName));
+        if (LoadLevelFromFile(mapToLoad)) {
+            for (int r = 0; r < MAP_ROWS; r++) {
+                for (int c = 0; c < MAP_COLS; c++) {
+                    SetMapTile(r, c, GetEditorMapTile(r, c));
+                }
+            }
+            maxWavesForCurrentLevel = GetEditorWaveCount();
+            StrCopySafe(currentMapName, GetFileNameWithoutExt(mapToLoad), sizeof(currentMapName));
+            TraceLog(LOG_INFO, "RestartGameplay: Loaded Custom Map '%s'", currentMapName);
+        } else {
+            TraceLog(LOG_ERROR, "DEBUG_TRACE (Restart): Mengambil jalur 'Default/Editor'.");
+            StrCopySafe(currentMapName, "Default Map", sizeof(currentMapName));
+        }
+
     } else {
-        
         const char* editorFile = GetEditorMapFileName();
-        if (editorFile && strcmp(editorFile, "maps/map.txt") != 0 && strlen(editorFile) > 0) {
+        if (editorFile && strcmp(editorFile, "maps/map.txt") != 0) {
+            for (int r = 0; r < MAP_ROWS; r++) {
+                for (int c = 0; c < MAP_COLS; c++) {
+                    SetMapTile(r, c, GetEditorMapTile(r, c));
+                }
+            }
+            maxWavesForCurrentLevel = GetEditorWaveCount();
             StrCopySafe(currentMapName, GetFileNameWithoutExt(editorFile), sizeof(currentMapName));
         } else {
+            ResetMapToDefault();
             StrCopySafe(currentMapName, "Default Map", sizeof(currentMapName));
         }
     }
@@ -133,14 +135,26 @@ void RestartGameplay(void) {
     int startRow = GetEditorStartRow();
     int startCol = GetEditorStartCol();
     if (startRow == -1 || startCol == -1) { startRow = 0; startCol = 4; } 
-
+    
     // Membuat objek gelombang musuh pertama dan menambahkannya ke daftar gelombang aktif.
     EnemyWave* firstWave = CreateWave(startRow, startCol);
     if (firstWave) {
+
+        if (firstWave->pathCount == 0) {
+            Push(&statusStack, "Error: Map has no valid path from start point!"); 
+            TraceLog(LOG_ERROR, "GAMEPLAY: Failed to start. Map has no valid path.");
+            FreeWave(&firstWave);     
+            currentGameState = MAIN_MENU; 
+            return;               
+        }
         activeWaves[activeWavesCount++] = firstWave;
     }
+    
     currentGameState = GAMEPLAY;
+    selectedCustomMapIndex = -1;
+    TraceLog(LOG_INFO, "GAMEPLAY: Restart complete. Starting new session on map '%s'.", currentMapName);
 }
+
 
 // I.S. : State semua entitas game (musuh, tower, wave) pada frame sebelumnya.
 // F.S. : State semua entitas game telah diperbarui.

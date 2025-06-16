@@ -8,7 +8,6 @@
 
 #include "utils.h"
 #include <string.h>
-#include "raylib.h"
 
 /* I.S. : filePath adalah path ke sebuah file gambar.
    F.S. : Mengembalikan Texture2D yang valid jika file berhasil dimuat. 

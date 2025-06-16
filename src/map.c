@@ -3,16 +3,30 @@
 * Deskripsi: Menerapkan fungsionalitas terkait peta untuk game berbasis ubin, 
 * menyediakan fungsi untuk memuat/membongkar tekstur, menggambar peta game, dan mengelola data ubin dan titik jalur.
 *
-* Penulis: Ahmad Riyadh Almaliki
-* Perubahan terakhir : Senin, 9 Juni 2025
+* Dibuat oleh: Ahmad Riyadh Almaliki
+* Perubahan terakhir: Senin, 9 Juni 2025
 */
 
 #include "map.h"
 #include "utils.h"
 #include <stdio.h>
 
-#define MAX_PATH_POINTS 100
-
+const int defaultGameMap[MAP_ROWS][MAP_COLS] = {
+    {0, 0, 0, 2, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 2, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 2, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 2, 1, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 2, 1, 9, 7, 7, 7, 4, 7, 7, 7, 4, 7, 7, 4, 7, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 0, 0, 0, 0},
+    {0, 0, 0, 0, 8, 8, 8, 4, 8, 8, 8, 4, 8, 8, 8, 8, 4, 1, 3, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 1, 4, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 4, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 4, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+};
 int gameMap[MAP_ROWS][MAP_COLS] = {
     {0, 0, 0, 2, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 2, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -86,6 +100,12 @@ void DrawMap(float globalScale, float offsetX, float offsetY) {
             
         }
     }
+}
+// I.S: `gameMap` mungkin berisi data dari peta kustom atau editor.
+// F.S: `gameMap` berisi data asli dari `defaultGameMap`.
+void ResetMapToDefault() {
+    memcpy(gameMap, defaultGameMap, sizeof(gameMap));
+    TraceLog(LOG_INFO, "MAP: Global game map has been reset to default.");
 }
 
 // Mengembalikan persegi untuk ubin berdasarkan indeksnya.

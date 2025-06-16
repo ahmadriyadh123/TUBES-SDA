@@ -5,10 +5,14 @@
 * Dibuat oleh : Ahmad Riyadh Almaliki
 * Perubahan terakhir : Senin, 9 Juni 2025
 */
+
 #ifndef MAP_H
 #define MAP_H
+
+#include "common.h"
 #include "raylib.h"
 
+#define MAX_PATH_POINTS 100
 #define MAP_ROWS 14
 #define MAP_COLS 23
 #define TILE_SIZE 27
@@ -17,18 +21,14 @@ extern int gameMap[MAP_ROWS][MAP_COLS];
 extern Texture2D tileSheetTex;
 extern Texture2D emptyCircleTex;
 
-/*
-Deskripsi: Menginisialisasi aset peta dengan memuat tekstur.
-I.S: Keadaan awal: Tekstur tidak diinisialisasi.
-F.S:  Keadaan akhir: Tekstur dimuat dan siap digunakan.
-*/
+// Deskripsi: Menginisialisasi aset peta dengan memuat tekstur.
+// I.S: Keadaan awal: Tekstur tidak diinisialisasi.
+// F.S:  Keadaan akhir: Tekstur dimuat dan siap digunakan.
 void InitMapAssets();
 
-/*
-Deskripsi: Membongkar aset peta.
-I.S: Keadaan awal: Tekstur dimuat.
-F.S:  Keadaan akhir: Tekstur dibongkar.
-*/
+// Deskripsi: Membongkar aset peta.
+// I.S: Keadaan awal: Tekstur dimuat.
+// F.S:  Keadaan akhir: Tekstur dibongkar.
 void ShutdownMapAssets();
 
 /*
@@ -37,6 +37,11 @@ I.S: Keadaan awal: Peta dan tekstur diinisialisasi.
 F.S:  Keadaan akhir: Peta dirender ke tampilan.
 */
 void DrawMap(float globalScale, float offsetX, float offsetY);
+
+/* I.S. : `gameMap` dapat berisi data apa pun, baik dari peta default, peta kustom yang dimuat, atau hasil modifikasi dari level editor. 
+          `defaultGameMap` berisi data peta asli yang tidak pernah berubah.
+   F.S. : Isi dari `gameMap` sepenuhnya ditimpa dari 'defaultGameMap' */
+void ResetMapToDefault();
 
 // Mengembalikan persegi untuk ubin berdasarkan indeksnya.
 // Nilai pengembalian: persegi panjang yang menentukan posisi ubin di tilesheet.

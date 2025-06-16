@@ -9,7 +9,7 @@
 #ifndef TRANSITION_H
 #define TRANSITION_H
 
-#include "main_menu.h" 
+#include "common.h" 
 
 void PlayTransitionAnimation(GameState targetState);
 

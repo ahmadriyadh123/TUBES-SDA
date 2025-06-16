@@ -15,9 +15,9 @@
 #define TOWER_FRAME_HEIGHT 130
 #define TOWER_ANIMATION_SPEED 0.1f  
 #define TOWER_Y_OFFSET_PIXELS 15.0f 
-#define TOWER_DRAW_SCALE 0.5f 
+#define TOWER_DRAW_SCALE 0.45f 
 #define ORBIT_RADIUS_FACTOR 1.5f 
-#define ORBIT_BUTTON_DRAW_SCALE 1.5f 
+#define ORBIT_BUTTON_DRAW_SCALE 1.0f 
 #define ORBIT_RADIUS_TILE_FACTOR 1.0f
 
 #define MAX_VISUAL_SHOTS 50 
@@ -40,6 +40,7 @@ typedef struct Tower{
     float frameTimer;  
     int row; 
     int col; 
+    int totalCost;
     struct Tower *next; 
     bool purchasedUpgrades[UPGRADE_MASS_SLOW + 1]; 
     
@@ -82,6 +83,9 @@ typedef struct {
     float impactMaxSize;
 } Shot;
 
+extern Texture2D tower1Texture;
+extern Texture2D tower2Texture;
+extern Texture2D tower3Texture;
 extern Tower *towersListHead; 
 extern Tower *selectedTowerForDeletion; 
 extern Vector2 towerSelectionUIPos;   
