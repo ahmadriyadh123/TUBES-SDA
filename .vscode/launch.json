@@ -5,7 +5,7 @@
             "name": "Launch Raylib Game (GDB)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/TUBES-SDA.exe", // <--- PASTIKAN BARIS INI BENAR
+            "program": "${workspaceFolder}/build/TUBES-SDA.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
