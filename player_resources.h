@@ -3,7 +3,7 @@
 *  Deskripsi   : mengelola dan memfasilitasi interaksi dengan dua sumber daya utama pemain
                  dalam sebuah game: uang (money) dan nyawa (life).
 *  Penulis     : m. jibril fathi al-ghifari
-*  Perubahan terakhir: Sabtu, 14 Juni 2025
+*  Perubahan terakhir: senin, 16 Juni 2025
 */
 
 #ifndef PLAYER_RESOURCES_H
