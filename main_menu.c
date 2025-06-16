@@ -6,11 +6,13 @@
 * Perubahan terakhir : Senin, 9 Juni 2025
 */
 
+#include "common.h"
 #include "raylib.h"
 #include "main_menu.h"
+#include "upgrade_tree.h"
 #include "utils.h" 
-#include "string.h"
-#include "stdio.h"
+#include "gameplay.h"
+#include "transition.h"
 
 GameState currentGameState = MAIN_MENU;
 
@@ -26,6 +28,10 @@ CustomMapEntry customMaps[MAX_CUSTOM_MAPS];
 int customMapCount = 0;
 int selectedCustomMapIndex = -1; 
 static int scrollOffset = 0; 
+
+static SkillDisplayInfo skillList[MAX_SKILLS_DISPLAY];
+static int skillCount = 0;
+static int selectedSkillIndex = -1;
 
 /* I.S. : Aset-aset gambar untuk menu utama (background, tombol, dll.) belum dimuat ke memori.
    F.S. : Semua aset gambar yang diperlukan untuk menu utama telah dimuat ke dalam variabel-variabel Texture2D. */
@@ -63,10 +69,11 @@ void UnloadMainMenuResources() {
 /* I.S. : Game berada dalam state MAIN_MENU dan aset telah dimuat.
    F.S. : Tampilan utama dari menu (background, logo, tombol-tombol utama) telah digambar ke layar. */
 void DrawMainMenu() {
-    int screenWidth = GetScreenWidth();
-    int screenHeight = GetScreenHeight();
+    int screenWidth = VIRTUAL_WIDTH;
+    int screenHeight = VIRTUAL_HEIGHT;
     DrawTexturePro(backgroundTex, (Rectangle){0, 0, (float)backgroundTex.width, (float)backgroundTex.height},
                    (Rectangle){0, 0, (float)screenWidth, (float)screenHeight}, (Vector2){0,0}, 0.0f, WHITE);
+
     float bgTexScaledWidth = menuBgTex.width * MENU_BG_DRAW_SCALE;
     float bgTexScaledHeight = menuBgTex.height * MENU_BG_DRAW_SCALE;
     Rectangle bgTexDestRect = {
@@ -98,8 +105,8 @@ void DrawMainMenu() {
 void HandleMainMenuInput() {
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) { 
         Vector2 mousePos = GetMousePosition();
-        int screenWidth = GetScreenWidth();
-        int screenHeight = GetScreenHeight();
+        int screenWidth = VIRTUAL_WIDTH;
+        int screenHeight = VIRTUAL_HEIGHT;
         float originalButtonWidth = (float)startButtonTex.width;
         float originalButtonHeight = (float)startButtonTex.height;
         float scaledButtonWidth = originalButtonWidth * MENU_BUTTON_DRAW_SCALE;
@@ -178,8 +185,8 @@ void LoadCustomMapList() {
 void UpdatePlaySelectionMenu(void) {
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         Vector2 mousePos = GetMousePosition(); 
-        int screenWidth = GetScreenWidth();
-        int screenHeight = GetScreenHeight();
+        int screenWidth = VIRTUAL_WIDTH;
+        int screenHeight = VIRTUAL_HEIGHT;
 
         float panelWidth = screenWidth * PANEL_WIDTH_FACTOR;
         float panelHeight = screenHeight * PANEL_HEIGHT_FACTOR;
@@ -193,8 +200,8 @@ void UpdatePlaySelectionMenu(void) {
         float totalButtonsHeight = buttonHeight * 3 + spacing * 2;
         float startYInPanel = panelY + (panelHeight - totalButtonsHeight) / 2.0f;
 
-        Rectangle defaultButtonRect = { panelX + PANEL_PADDING, startYInPanel - 200, buttonWidth, buttonHeight + 200};
-        Rectangle customButtonRect = { panelX + PANEL_PADDING, startYInPanel + buttonHeight + spacing, buttonWidth, buttonHeight + 200};
+        Rectangle defaultButtonRect = { panelX + PANEL_PADDING, startYInPanel - 100, buttonWidth, buttonHeight + 100};
+        Rectangle customButtonRect = { panelX + PANEL_PADDING, startYInPanel + buttonHeight + spacing, buttonWidth, buttonHeight + 100};
         float backButtonWidth = panelWidth * 0.5f; 
         float backButtonHeight = PANEL_BUTTON_HEIGHT;
         Rectangle backButtonRect = { 
@@ -206,7 +213,7 @@ void UpdatePlaySelectionMenu(void) {
         
         if (CheckButtonClick(defaultButtonRect, mousePos)) { 
             TraceLog(LOG_INFO, "Default Game Selected! Starting GAMEPLAY.");
-            currentGameState = GAMEPLAY;
+            RestartGameplay(); 
         } else if (CheckButtonClick(customButtonRect, mousePos)) { 
             TraceLog(LOG_INFO, "Custom Game Selected! Loading custom map list.");
             LoadCustomMapList();
@@ -221,8 +228,8 @@ void UpdatePlaySelectionMenu(void) {
 /* I.S. : Game berada dalam state MAIN_MENU_PLAY_SELECTION.
    F.S. : Tampilan untuk memilih mode permainan (Default Game / Custom Game) telah digambar ke layar. */
 void DrawPlaySelectionMenu(void) {
-    int screenWidth = GetScreenWidth();
-    int screenHeight = GetScreenHeight();
+    int screenWidth = VIRTUAL_WIDTH;
+    int screenHeight = VIRTUAL_HEIGHT;
 
     DrawTexturePro(backgroundTex, (Rectangle){0, 0, (float)backgroundTex.width, (float)backgroundTex.height},
                    (Rectangle){0, 0, (float)screenWidth, (float)screenHeight}, (Vector2){0,0}, 0.0f, WHITE);
@@ -244,10 +251,10 @@ void DrawPlaySelectionMenu(void) {
     float startYInPanel = panelY + (panelHeight - totalButtonsHeight) / 2.0f;
 
     
-    Rectangle defaultButtonRect = { panelX + PANEL_PADDING , startYInPanel - 200, buttonWidth, buttonHeight + 200};
+    Rectangle defaultButtonRect = { panelX + PANEL_PADDING , startYInPanel - 100, buttonWidth, buttonHeight + 100};
     DrawButton(defaultButtonRect, "Default Map", LIGHTGRAY, BLACK, 40);
 
-    Rectangle customButtonRect = { panelX + PANEL_PADDING, startYInPanel + buttonHeight + spacing, buttonWidth, buttonHeight + 200};
+    Rectangle customButtonRect = { panelX + PANEL_PADDING, startYInPanel + buttonHeight + spacing, buttonWidth, buttonHeight + 100};
     DrawButton(customButtonRect, "Custom Map", LIGHTGRAY, BLACK, 40);
 
     float backButtonWidth = panelWidth * 0.5f; 
@@ -266,8 +273,8 @@ void DrawPlaySelectionMenu(void) {
 void UpdateCustomMapListMenu(void) {
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         Vector2 mousePos = GetMousePosition();
-        int screenWidth = GetScreenWidth();
-        int screenHeight = GetScreenHeight();
+        int screenWidth = VIRTUAL_WIDTH;
+        int screenHeight = VIRTUAL_HEIGHT;
 
         float panelWidth = screenWidth * PANEL_WIDTH_FACTOR;
         float panelHeight = screenHeight * PANEL_HEIGHT_FACTOR;
@@ -291,7 +298,6 @@ void UpdateCustomMapListMenu(void) {
             return;
         }
 
-        
         if (CheckCollisionPointRec(mousePos, listAreaRect)) {
             int clickedY = (int)mousePos.y - (int)listAreaRect.y;
             int itemIndex = (clickedY + scrollOffset) / MAP_LIST_ITEM_HEIGHT;
@@ -299,7 +305,7 @@ void UpdateCustomMapListMenu(void) {
             if (itemIndex >= 0 && itemIndex < customMapCount) {
                 selectedCustomMapIndex = itemIndex;
                 TraceLog(LOG_INFO, "MAIN_MENU: Selected custom map: %s", customMaps[selectedCustomMapIndex].name);
-                currentGameState = GAMEPLAY;
+                RestartGameplay(); 
                 return;
             }
         }
@@ -319,8 +325,8 @@ void UpdateCustomMapListMenu(void) {
 /* I.S. : Game berada dalam state MAIN_MENU_CUSTOM_MAP_LIST dan daftar peta telah dimuat.
    F.S. : Daftar peta kustom yang dapat di-scroll telah digambar ke layar. */
 void DrawCustomMapListMenu(void) {
-    int screenWidth = GetScreenWidth();
-    int screenHeight = GetScreenHeight();
+    int screenWidth = VIRTUAL_WIDTH;
+    int screenHeight = VIRTUAL_HEIGHT;
 
     DrawTexturePro(backgroundTex, (Rectangle){0, 0, (float)backgroundTex.width, (float)backgroundTex.height},
                    (Rectangle){0, 0, (float)screenWidth, (float)screenHeight}, (Vector2){0,0}, 0.0f, WHITE);
@@ -359,4 +365,178 @@ void DrawCustomMapListMenu(void) {
         backButtonHeight 
     };
     DrawButton(backButtonRect, "Back", LIGHTGRAY, BLACK, 20); 
+}
+
+// Teks Petunjuk Cara Bermain
+static const char* howToPlayText[] = {
+    "",
+    "",
+    "Tujuan: Cegah musuh mencapai akhir jalur dengan membangun menara.",
+    "Cara Bermain:",
+    " - Klik petak kosong untuk membangun tower ($50).",
+    " - Kalahkan musuh untuk mendapatkan uang.",
+    " - Klik tower yang sudah ada untuk opsi Jual atau Upgrade.",
+    " - Jika nyawa habis (musuh lolos), permainan berakhir."
+};
+static int howToPlayLineCount = sizeof(howToPlayText) / sizeof(howToPlayText[0]);
+
+// Fungsi ini akan berjalan di sepanjang tree dan mengumpulkan data skill
+static void PopulateSkillListRecursive(UpgradeNode* node) {
+    if (node == NULL || skillCount >= MAX_SKILLS_DISPLAY) {
+        return;
+    }
+
+    // Hanya tambahkan node yang merupakan skill upgrade (bukan kategori)
+    if (node->type > UPGRADE_SPECIAL_EFFECT_BASE) {
+        skillList[skillCount].icon = GetUpgradeIconTexture(node->type);
+        skillList[skillCount].name = node->name;
+        
+        // ======================= AWAL BLOK PERBAIKAN =======================
+        // Buat deskripsi dinamis berdasarkan tipe upgrade
+        switch (node->type) {
+            case UPGRADE_LIGHTNING_ATTACK:
+                snprintf(skillList[skillCount].description, MAX_SKILL_DESC_LEN, "%s Meningkatkan kecepatan serangan sebesar 30%%.", node->description);
+                break;
+            case UPGRADE_CHAIN_ATTACK:
+                snprintf(skillList[skillCount].description, MAX_SKILL_DESC_LEN, "%s Damage berkurang 20%%, menyerang 3 target.", node->description);
+                break;
+            case UPGRADE_AREA_ATTACK:
+                snprintf(skillList[skillCount].description, MAX_SKILL_DESC_LEN, "%s Damage berkurang 30%%, radius ledakan 60.", node->description);
+                break;
+            case UPGRADE_CRITICAL_ATTACK:
+                snprintf(skillList[skillCount].description, MAX_SKILL_DESC_LEN, "%s Peluang 15%% untuk damage 2.0x lipat.", node->description);
+                break;
+            case UPGRADE_STUN_EFFECT:
+                snprintf(skillList[skillCount].description, MAX_SKILL_DESC_LEN, "%s Peluang 25%% untuk menghentikan musuh selama 0.5 detik.", node->description);
+                break;
+            case UPGRADE_WIDE_CHAIN_RANGE:
+                snprintf(skillList[skillCount].description, MAX_SKILL_DESC_LEN, "%s Menambah +2 target dan memperluas jangkauan lompatan.", node->description);
+                break;
+            case UPGRADE_LARGE_AOE_RADIUS:
+                snprintf(skillList[skillCount].description, MAX_SKILL_DESC_LEN, "%s Memperluas radius ledakan sebesar 60%%.", node->description);
+                break;
+            case UPGRADE_HIGH_CRIT_CHANCE:
+                snprintf(skillList[skillCount].description, MAX_SKILL_DESC_LEN, "%s Menambah peluang kritikal +20%% dan damage +0.5x.", node->description);
+                break;
+            // Tambahkan case lain untuk skill yang belum ada deskripsi dinamisnya
+            default:
+                // Jika tidak ada deskripsi dinamis, gunakan yang standar
+                snprintf(skillList[skillCount].description, MAX_SKILL_DESC_LEN, "%s", node->description);
+                break;
+        }
+        // ======================= AKHIR BLOK PERBAIKAN ======================
+        
+        skillCount++;
+    }
+
+    // Lanjutkan ke anak-anaknya
+    for (int i = 0; i < node->numChildren; i++) {
+        PopulateSkillListRecursive(node->children[i]);
+    }
+}
+
+/* I.S. : Menu pengaturan belum diinisialisasi. Daftar skill mungkin kosong atau tidak relevan.
+   F.S. : Daftar skill telah dikumpulkan dari pohon upgrade dan siap ditampilkan.
+          Variabel-variabel state menu pengaturan diatur ke default. */
+void InitSettingsMenu(void) {
+    // Reset dan isi ulang daftar skill dari upgrade tree
+    skillCount = 0;
+    selectedSkillIndex = -1;
+    UpgradeNode* root = GetUpgradeTreeRoot(&tower1UpgradeTree);
+    if (root) {
+        PopulateSkillListRecursive(root);
+    }
+    TraceLog(LOG_INFO, "SETTINGS: Loaded %d skills from upgrade tree.", skillCount);
+}
+
+/* I.S. : Menu pengaturan sedang aktif dan menunggu input dari pengguna.
+   F.S. : Input pengguna (misalnya, klik pada skill atau tombol 'Back') telah diproses.
+          Skill yang dipilih diperbarui, atau state game diubah jika tombol navigasi diklik. */
+void UpdateSettingsMenu(void) {
+    Vector2 mousePos = GetMousePosition();
+
+    // Handle klik pada tombol-tombol skill
+    for (int i = 0; i < skillCount; i++) {
+        if (CheckCollisionPointRec(mousePos, skillList[i].buttonRect)) {
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                selectedSkillIndex = i;
+            }
+        }
+    }
+    float margin = 25.0f;
+    float backButtonScale = 2.0f; 
+    Rectangle backButtonRect = { margin, margin, backButtonTex.width * backButtonScale, backButtonTex.height * backButtonScale };
+
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(mousePos, backButtonRect))
+    {
+        PlayTransitionAnimation(MAIN_MENU);
+        currentGameState = MAIN_MENU;
+        TraceLog(LOG_INFO, "Editor: Returning to MAIN_MENU via back button.");
+        return; 
+    }
+}
+
+/* I.S. : Menu pengaturan siap untuk digambar.
+   F.S. : Antarmuka pengguna menu pengaturan telah digambar ke layar,
+          termasuk petunjuk bermain, daftar skill, dan deskripsi skill yang dipilih. */
+void DrawSettingsMenu(void) {
+    ClearBackground(BROWN); // Latar belakang putih bersih
+    
+    // Gambar Judul
+    DrawText("PETUNJUK & DAFTAR SKILL", VIRTUAL_WIDTH / 2 - MeasureText("PETUNJUK & DAFTAR SKILL", 40) / 2 - 20, 40, 50, BLACK);
+
+    // Area Petunjuk Cara Bermain
+    float guideBoxY = 300;
+    DrawRectangle(50, guideBoxY, VIRTUAL_WIDTH - 100, 300, Fade(LIGHTGRAY, 0.3f));
+    DrawRectangleLines(50, guideBoxY, VIRTUAL_WIDTH - 100, 300, GRAY);
+    DrawText("Cara Bermain", 70, 200 + 10, 40, BLACK);
+    for (int i = 0; i < howToPlayLineCount; i++) {
+         DrawText(howToPlayText[i], 60, guideBoxY - 50 + i * 40, 20, BLACK);
+    }
+
+    // Area Daftar Skill
+    float skillBoxY = guideBoxY + 350;
+    DrawText("Daftar Skill Upgrade", 70, skillBoxY - 35, 40, BLACK);
+    
+    float buttonSize = 100;
+    float buttonSpacing = 50;
+    float startX = 80;
+    float startY = skillBoxY + 20;
+    int itemsPerRow = (VIRTUAL_WIDTH - 140) / (buttonSize + buttonSpacing);
+
+    for (int i = 0; i < skillCount; i++) {
+        int row = i / itemsPerRow;
+        int col = i % itemsPerRow;
+        skillList[i].buttonRect = (Rectangle){ 
+            startX + col * (buttonSize + buttonSpacing), 
+            startY + row * (buttonSize + buttonSpacing), 
+            buttonSize, 
+            buttonSize 
+        };
+        
+        // Gambar tombol skill
+        DrawTexturePro(skillList[i].icon, (Rectangle){0,0, (float)skillList[i].icon.width, (float)skillList[i].icon.height}, skillList[i].buttonRect, (Vector2){0,0}, 0.0f, WHITE);
+        // Beri bingkai jika sedang dipilih atau di-hover
+        if (selectedSkillIndex == i) {
+            DrawRectangleLinesEx(skillList[i].buttonRect, 3, BLUE);
+        } else if (CheckCollisionPointRec(GetMousePosition(), skillList[i].buttonRect)) {
+            DrawRectangleLinesEx(skillList[i].buttonRect, 2, SKYBLUE);
+        }
+    }
+
+    // Area Deskripsi Skill yang Dipilih
+    float descBoxY = startY + ( (skillCount / itemsPerRow) + 1 ) * (buttonSize + buttonSpacing) + 10;
+    if (selectedSkillIndex != -1) {
+        DrawRectangle(50, descBoxY, VIRTUAL_WIDTH - 100, 100, Fade(LIGHTGRAY, 0.3f));
+        DrawRectangleLines(50, descBoxY, VIRTUAL_WIDTH - 100, 100, GRAY);
+         
+        DrawText(skillList[selectedSkillIndex].name, 70, descBoxY + 10, 35, BLACK);
+        DrawText(skillList[selectedSkillIndex].description, 70, descBoxY + 50, 30, BLACK);
+    }
+    float margin = 25.0f;
+    float backButtonScale = 2.0f; 
+    if (backButtonTex.id != 0)
+    {
+        DrawTextureEx(backButtonTex, (Vector2){margin, margin}, 0.0f, backButtonScale, WHITE);
+    }
 }
