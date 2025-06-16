@@ -4,7 +4,7 @@
 *                Mengelola semua data dan perilaku yang terkait dengan musuh dan gelombang musuh.
 * 
 *  Penulis     : Micky Ridho Pratama
-*  Perubahan terakhir: Jum'at, 13 Juni 2025
+*  Perubahan terakhir: Sabtu, 14 Juni 2025
 */
 
 #ifndef ENEMY_H
