@@ -4,6 +4,7 @@
 #include "utils.h"
 #include "map.h"
 #include "player_resources.h"
+#include "audio.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +21,7 @@ WaveQueue incomingWaves;
 Enemy *allActiveEnemies = NULL;  
 int maxTotalActiveEnemies = 200; 
 int totalActiveEnemiesCount = 0; 
+int currentWaveNum = 1;
 
 // I.S. : Aset-aset untuk musuh belum dimuat.
 // F.S. : Semua aset yang diperlukan oleh modul Enemy telah dimuat ke memori.
@@ -329,38 +331,58 @@ static void BuildPathDFS_Internal(int x, int y, bool visited[MAP_ROWS][MAP_COLS]
 // I.S. : 'waveToBuild->path' kosong.
 // F.S. : 'waveToBuild->path' telah diisi dengan koordinat jalur yang ditemukan dari titik awal.
 // 'waveToBuild->pathCount' diperbarui.
-void Enemies_BuildPath(int startX, int startY, EnemyWave* waveToBuild) { 
-    bool visited[MAP_ROWS][MAP_COLS];
-    for (int r = 0; r < MAP_ROWS; r++) {
-        for (int c = 0; c < MAP_COLS; c++) {
-            visited[r][c] = false;
+void Enemies_BuildPath(int startX, int startY, EnemyWave* waveToBuild) {
+    
+    bool visited[MAP_ROWS][MAP_COLS] = {false};
+    waveToBuild->pathCount = 0;
+    
+    if (startX < 0 || startX >= MAP_COLS || startY < 0 || startY >= MAP_ROWS || !IsPathTile(startY, startX)) {
+        TraceLog(LOG_ERROR, "Pathfinding failed: Start point (%d, %d) is not a valid path tile.", startX, startY);
+        return; 
+    }
+
+    int currentX = startX;
+    int currentY = startY;
+
+    while (waveToBuild->pathCount < MAX_PATH_POINTS) {
+        
+        visited[currentY][currentX] = true;
+
+        waveToBuild->path[waveToBuild->pathCount] = (Vector2){
+            currentX * (float)TILE_SIZE + TILE_SIZE / 2.0f,
+            currentY * (float)TILE_SIZE + TILE_SIZE / 2.0f
+        };
+        waveToBuild->pathCount++;
+        bool foundNextStep = false;
+
+        for (int d = 0; d < 4; d++) {
+            int nextX = currentX + dx_path[d];
+            int nextY = currentY + dy_path[d];
+
+            if (IsPathTile(nextY, nextX) && !visited[nextY][nextX]) {
+                
+                currentX = nextX;
+                currentY = nextY;
+                foundNextStep = true;
+                break; 
+            }
+        }
+        if (!foundNextStep) {
+            break; 
         }
     }
-    waveToBuild->pathCount = 0; 
 
-    TraceLog(LOG_DEBUG, "Attempting to build path for wave %d from (%d, %d). Tile value: %d", 
-             waveToBuild->waveNum, startX, startY, GetMapTile(startY, startX));
-
-    if (startX >= 0 && startX < MAP_COLS && startY >= 0 && startY < MAP_ROWS &&
-        IsPathTile(startY, startX)) {
-
-        
-        
-        BuildPathDFS_Internal(startX, startY, visited, waveToBuild->path, &waveToBuild->pathCount);
-
-        TraceLog(LOG_INFO, "Enemy path built for wave %d. Points: %d. Start: (%d, %d).", 
-                 waveToBuild->waveNum, waveToBuild->pathCount, startX, startY);
-
+    if (waveToBuild->pathCount > 0) {
+         TraceLog(LOG_INFO, "Path built using Smart Tracer. Points: %d. Start: (%d, %d).",
+                 waveToBuild->pathCount, startX, startY);
     } else {
-        TraceLog(LOG_ERROR, "Failed to build enemy path for wave %d: Start point (%d, %d) is not a valid path tile (value %d).",
-                 waveToBuild->waveNum, startX, startY, GetMapTile(startY, startX));
-        waveToBuild->pathCount = 0;
+        TraceLog(LOG_WARNING, "Pathfinding failed to build any path from start (%d, %d).", startX, startY);
     }
 }
 
-// I.S. : Diberikan sebuah target saat ini dan daftar target yang sudah dikecualikan.
-// F.S. : Mengembalikan pointer ke musuh terdekat berikutnya dalam jangkauan 'range' yang belum ada
-// di dalam daftar 'excludedTargets'. Mengembalikan NULL jika tidak ada.
+// I.S. : 'waveToBuild->path' kosong.
+// F.S. : 'waveToBuild->path' telah diisi dengan koordinat jalur yang ditemukan dari titik awal.
+// 'waveToBuild->pathCount' diperbarui.
 Enemy* FindNextChainTarget(Enemy* currentTarget, Enemy* excludedTargets[], int excludedCount, float range) {
     Enemy* bestTarget = NULL;
     float minDistance = range;
@@ -442,21 +464,29 @@ void Enemies_Update(float deltaTime) {
             reachedEnd = true;
         }
         
+        
         if (e->hp <= 0) {
-            isDefeated = true;
+            e->active = false;
+            totalActiveEnemiesCount--;
+            AddMoney(15); 
+            PlayEnemyDefeatedSound();
+            continue; 
         }
 
+        
         if (reachedEnd) {
-            if (!isDefeated) { 
-                DecreaseLife(1);
-            }
-            isDefeated = true;
+            e->active = false;
+            totalActiveEnemiesCount--;
+            DecreaseLife(1); 
+            
+            continue; 
         }
 
         if (isDefeated) {
             e->active = false;
             totalActiveEnemiesCount--;
             AddMoney(15);
+            PlayEnemyDefeatedSound();
         }
     }
 }
@@ -465,11 +495,9 @@ void Enemies_Update(float deltaTime) {
 // F.S. : Semua musuh yang 'active' telah digambar ke layar pada posisi dan skala yang tepat.
 void Enemies_Draw(float globalScale, float offsetX, float offsetY) {
     if (!allActiveEnemies || totalActiveEnemiesCount == 0) {
-        TraceLog(LOG_DEBUG, "Enemies_Draw: No active enemies to draw (allActiveEnemies NULL or count is 0).");
         return;
     }
 
-    TraceLog(LOG_DEBUG, "Enemies_Draw: Drawing %d active enemies.", totalActiveEnemiesCount);
     for (int i = 0; i < maxTotalActiveEnemies; i++) {
         const Enemy *e = &allActiveEnemies[i];
         if (!e->active) 
@@ -562,7 +590,6 @@ EnemyWave* CreateWave(int startRow, int startCol) {
     }
 
     Enemies_BuildPath(startCol, startRow, newWave);
-
     return newWave;
 }
 
@@ -626,7 +653,6 @@ bool AllEnemiesInWaveFinished(const EnemyWave *wave) {
     }
     return (allSpawnedFromThisWave && activeFromThisWave == 0);
 }
-
 // I.S. : 'wave' adalah gelombang yang sedang dalam fase hitung mundur.
 // F.S. : Visual timer (lingkaran merah) digambar ke layar jika 'wave->timerVisible' adalah true.
 void DrawGameTimer(const EnemyWave *wave, float globalScale, float offsetX, float offsetY, int timerRow, int timerCol)
