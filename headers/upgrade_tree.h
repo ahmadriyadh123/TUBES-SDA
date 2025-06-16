@@ -33,7 +33,7 @@ void InitUpgradeTree(TowerUpgradeTree *tree, TowerType type);
 /* I.S : Parameter-parameter seperti type, name, desc, cost, parent, dan exclusiveGroupId telah siap untuk digunakan dalam pembuatan node baru.
    F.S.: 'UpgradeNode' baru telah dialokasikan di memori dan semua propertinya telah diisi sesuai dengan parameter yang diberikan.
          Fungsi mengembalikan pointer ke node baru tersebut. Jika alokasi memori gagal, fungsi akan mengembalikan NULL.*/
-UpgradeNode *CreateUpgradeNode(UpgradeType type, const char *name, const char *desc, int cost, UpgradeNode *parent, int exclusiveGroupId)
+UpgradeNode *CreateUpgradeNode(UpgradeType type, const char *name, const char *desc, int cost, UpgradeNode *parent, int exclusiveGroupId);
 
 /* I.S. : Tower yang mungkin sudah memiliki beberapa upgrade telah terinisialisasi.
    F.S. : Mengembalikan pointer ke 'UpgradeNode'. Jika belum ada upgrade yang dibeli, fungsi akan
