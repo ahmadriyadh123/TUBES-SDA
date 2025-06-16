@@ -201,7 +201,7 @@ void UpdatePlaySelectionMenu(void) {
         float startYInPanel = panelY + (panelHeight - totalButtonsHeight) / 2.0f;
 
         Rectangle defaultButtonRect = { panelX + PANEL_PADDING, startYInPanel - 100, buttonWidth, buttonHeight + 100};
-        Rectangle customButtonRect = { panelX + PANEL_PADDING, startYInPanel + buttonHeight + spacing, buttonWidth, buttonHeight + 100};
+        Rectangle customButtonRect = { panelX + PANEL_PADDING, startYInPanel + buttonHeight + spacing + 15, buttonWidth, buttonHeight + 100};
         float backButtonWidth = panelWidth * 0.5f; 
         float backButtonHeight = PANEL_BUTTON_HEIGHT;
         Rectangle backButtonRect = { 
@@ -254,7 +254,7 @@ void DrawPlaySelectionMenu(void) {
     Rectangle defaultButtonRect = { panelX + PANEL_PADDING , startYInPanel - 100, buttonWidth, buttonHeight + 100};
     DrawButton(defaultButtonRect, "Default Map", LIGHTGRAY, BLACK, 40);
 
-    Rectangle customButtonRect = { panelX + PANEL_PADDING, startYInPanel + buttonHeight + spacing, buttonWidth, buttonHeight + 100};
+    Rectangle customButtonRect = { panelX + PANEL_PADDING, startYInPanel + buttonHeight + spacing + 15, buttonWidth, buttonHeight + 100};
     DrawButton(customButtonRect, "Custom Map", LIGHTGRAY, BLACK, 40);
 
     float backButtonWidth = panelWidth * 0.5f; 
