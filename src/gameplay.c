@@ -223,7 +223,7 @@ void UpdateGameplay(float deltaTime) {
                     
                     int startRow = GetEditorStartRow();
                     int startCol = GetEditorStartCol();
-                    if (startRow == -1 || startCol == -1) { startRow = 0; startCol = 2; }
+                    if (startRow == -1 || startCol == -1) { startRow = 0; startCol = 4; }
                     EnemyWave* nextWave = CreateWave(startRow, startCol);
                     if (nextWave) activeWaves[activeWavesCount++] = nextWave;
                 }
@@ -240,7 +240,7 @@ void UpdateGameplay(float deltaTime) {
                         
                         int startRow = GetEditorStartRow();
                         int startCol = GetEditorStartCol();
-                        if (startRow == -1 || startCol == -1) { startRow = 0; startCol = 2; }
+                        if (startRow == -1 || startCol == -1) { startRow = 0; startCol = 4; }
                         EnemyWave* nextWave = CreateWave(startRow, startCol);
                         if (nextWave) activeWaves[activeWavesCount++] = nextWave;
                     }
@@ -292,6 +292,10 @@ void HandleGameplayInput(Vector2 mousePos)
                     
                     SetWaveTimerCurrentTime(wave, GetWaveTimerDuration(wave));
                     Push(&statusStack, "Wave accelerated!");
+                    if (timeToNextWave < 0) {
+                        timeToNextWave = WAVE_INTERVAL;
+                    }
+                    PlayBattleMusic();
                     return; 
                 }
             }
