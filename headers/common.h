@@ -10,12 +10,16 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#define VIRTUAL_WIDTH 1920
+#define VIRTUAL_HEIGHT 1080
+
 #include "raylib.h"
 #include <stdbool.h> 
 #include <stdio.h>   
 #include <stdlib.h> 
 #include <math.h>
 #include <string.h>
+#include <stddef.h>
 
 //Enum untuk semua jenis state utamma yang ada dalam game
 typedef enum {
@@ -25,7 +29,7 @@ typedef enum {
     GAMEPLAY,
     GAME_PAUSED, 
     LEVEL_EDITOR,
-    LEVEL_EDITOR_SAVE_DIALOG, 
+    LEVEL_EDITOR_SAVE, 
     SETTINGS,
     LEVEL_COMPLETE,
     GAME_OVER,

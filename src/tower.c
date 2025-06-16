@@ -2,7 +2,7 @@
 * Deskripsi   : Implementasi dari semua fungsi yang berkaitan dengan ADT Tower. 
 *               Berisi logika untuk menempatkan, meng-update serangan, menggambar, 
 *               dan mengelola tower. 
-* Dibuat oleh : Ahmad Riyadh Almaliki
+* Dibuat oleh   : Ahmad Riyadh Almaliki
 * Tanggal Perubahan : Sabtu, 14 Juni 2025
 */
 
@@ -15,6 +15,7 @@
 #include "upgrade_tree.h"
 #include "player_resources.h"
 #include "status.h"
+#include "audio.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <math.h>
@@ -30,7 +31,9 @@ Texture2D upgradeButtonTex = {0};
 float DELETE_BUTTON_DRAW_SCALE = ORBIT_BUTTON_DRAW_SCALE; 
 float UPGRADE_BUTTON_DRAW_SCALE = ORBIT_BUTTON_DRAW_SCALE;
 
-static Texture2D towerTexture = {0};
+Texture2D tower1Texture = {0};
+Texture2D tower2Texture = {0};
+Texture2D tower3Texture = {0};
 static Shot shots[MAX_VISUAL_SHOTS]; 
 
 /* I.S. : Aset-aset untuk tower (seperti tekstur sprite, tombol UI) belum dimuat.
@@ -46,7 +49,9 @@ void InitShots(void) {
    F.S. : Array internal untuk menampung efek visual telah diinisialisasi dan siap digunakan. */
 void InitTowerAssets()
 {
-    towerTexture = LoadTextureSafe("assets/img/gameplay_imgs/tower1.png");
+    tower1Texture = LoadTextureSafe("assets/img/gameplay_imgs/tower1.png");
+    tower2Texture = LoadTextureSafe("assets/img/gameplay_imgs/tower2.png");
+    tower3Texture = LoadTextureSafe("assets/img/gameplay_imgs/tower3.png");
     deleteButtonTex = LoadTextureSafe("assets/img/gameplay_imgs/delete_button.png");
     upgradeButtonTex = LoadTextureSafe("assets/img/gameplay_imgs/upgrade_button.png");
     TraceLog(LOG_INFO, "Tower assets initialized.");
@@ -57,7 +62,9 @@ void InitTowerAssets()
           Semua tower yang tersisa di-dealokasi. */
 void ShutdownTowerAssets()
 {
-    UnloadTextureSafe(&towerTexture);
+    UnloadTextureSafe(&tower1Texture);
+    UnloadTextureSafe(&tower2Texture);
+    UnloadTextureSafe(&tower3Texture);
     UnloadTextureSafe(&deleteButtonTex);
     UnloadTextureSafe(&upgradeButtonTex);
 
@@ -200,14 +207,16 @@ void PlaceTower(int row, int col, TowerType type)
     SetTowerAttackSpeed(newTower, 1.0f);
     SetTowerAttackCooldown(newTower, 0.3f);
     SetTowerActive(newTower, true);
-    newTower->texture = towerTexture;
+    newTower->texture = tower1Texture;
     newTower->frameWidth = TOWER_FRAME_WIDTH;
     newTower->frameHeight = TOWER_FRAME_HEIGHT;
     newTower->currentFrame = 0;
     newTower->frameTimer = 0.0f;
     newTower->row = row;
     newTower->col = col;
+    newTower->totalCost = 50;
     newTower->next = NULL;
+
 
     newTower->next = (struct Tower *)towersListHead;
     towersListHead = newTower;
@@ -215,6 +224,7 @@ void PlaceTower(int row, int col, TowerType type)
     AddMoney(-50);
     SetMapTile(row, col, 7);
     Push(&statusStack, "Tower placed successfully."); 
+    PlaySpendMoneySound(); // <-- PANGGIL DI SINI
     TraceLog(LOG_INFO, "Tower placed at (%d, %d). Money: $%d.", row, col, GetMoney());
     HideTowerOrbitUI();
 }
@@ -253,7 +263,6 @@ void RemoveTower(Tower *towerToRemove)
     SetMapTile(current->row, current->col, 4);
 
     free(current);
-    Push(&statusStack, "Tower sold for +25 gold."); 
     TraceLog(LOG_INFO, "Tower removed from map at (%d, %d).", towerToRemove->row, towerToRemove->col);
     HideTowerOrbitUI();
 }
@@ -265,7 +274,10 @@ void SellTower(Tower *towerToSell)
     if (towerToSell == NULL)
         return;
 
-    AddMoney(25);
+    int sellPrice = (int)(towerToSell->totalCost * 0.9f);
+    AddMoney(sellPrice);
+    Push(&statusStack, TextFormat("Tower sold for +%d gold.", sellPrice));
+    PlaySpendMoneySound(); // <-- PANGGIL DI SINI
     TraceLog(LOG_INFO, "Tower at (%d, %d) sold. Money: $%d.", towerToSell->row, towerToSell->col, GetMoney());
 
     RemoveTower(towerToSell);
@@ -648,4 +660,3 @@ void SetTowerActive(Tower *tower, bool active)
 {
     if (tower) tower->active = active;
 }
-
