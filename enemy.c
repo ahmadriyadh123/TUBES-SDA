@@ -1,3 +1,12 @@
+/* File        : enemy.h 
+*
+*  Deskripsi   : Deklarasi Abstract Data Type (ADT) untuk Enemy dan EnemyWave. 
+*                Mengelola semua data dan perilaku yang terkait dengan musuh dan gelombang musuh.
+* 
+*  Penulis     : Micky Ridho Pratama
+*  Perubahan terakhir: Sabtu, 14 Juni 2025
+*/
+
 #include <raylib.h>
 #include <raymath.h>
 #include "enemy.h"
@@ -410,8 +419,6 @@ Enemy* FindNextChainTarget(Enemy* currentTarget, Enemy* excludedTargets[], int e
     return bestTarget;
 }
 
-// I.S. : Posisi dan status musuh pada frame sebelumnya.
-// F.S. : Posisi semua musuh yang aktif di 'allActiveEnemies' diperbarui sesuai 'deltaTime' dan jalurnya.
 void Enemies_Update(float deltaTime) {
     for (int i = 0; i < maxTotalActiveEnemies; i++) { 
         Enemy *e = &allActiveEnemies[i];
@@ -491,8 +498,8 @@ void Enemies_Update(float deltaTime) {
     }
 }
 
-// I.S. : 'allActiveEnemies' berisi data musuh yang akan digambar.
-// F.S. : Semua musuh yang 'active' telah digambar ke layar pada posisi dan skala yang tepat.
+
+
 void Enemies_Draw(float globalScale, float offsetX, float offsetY) {
     if (!allActiveEnemies || totalActiveEnemiesCount == 0) {
         return;
