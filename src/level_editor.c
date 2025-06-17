@@ -6,18 +6,19 @@
 * Perubahan terakhir : Rabu, 11 Juni 2025
 */
 
+#include "common.h"
 #include "level_editor.h"
 #include "map.h"
+#include "gameplay.h"
 #include "utils.h"
 #include "raylib.h"
 #include "enemy.h"
 #include "main_menu.h"
-#include <string.h>
-#include <stdio.h>
-#include <stddef.h>
-#include <math.h>
+#include "transition.h"
+#include "audio.h"
 
 int customWaveCount = 0; 
+bool editorInitialized = false;
 LevelEditorState editorState = {.startRow = -1, .startCol = -1, .waveCount = 1}; 
 
 /* I.S. : State level editor belum terinisialisasi.
@@ -81,8 +82,8 @@ void UnloadLevelEditor()
 void HandleLevelEditorInput(float globalScale, float offsetX, float offsetY)
 {
     Vector2 mousePos = GetMousePosition();
-    float screenWidth = (float)GetScreenWidth();
-    float screenHeight = (float)GetScreenHeight();
+    float screenWidth = (float)VIRTUAL_WIDTH;
+    float screenHeight = (float)VIRTUAL_HEIGHT;
     float availableWidth = screenWidth * (1.0f - 2 * EDITOR_VIEW_PADDING_SIDE_FACTOR);
     float availableHeight = screenHeight * (1.0f - EDITOR_VIEW_PADDING_TOP_FACTOR - EDITOR_VIEW_PADDING_BOTTOM_FACTOR);
     float baseMapWidth = MAP_COLS * TILE_SIZE;
@@ -94,8 +95,6 @@ void HandleLevelEditorInput(float globalScale, float offsetX, float offsetY)
     float editorMapOffsetY = screenHeight * EDITOR_VIEW_PADDING_TOP_FACTOR + (availableHeight - editorMapDisplayHeight) / 2.0f;
     float tileScreenSize = TILE_SIZE * editorMapScale;
 
-    
-    
     float buttonWidth = TILE_SIZE * editorMapScale * EDITOR_BUTTON_WIDTH_FACTOR;
     float buttonHeight = TILE_SIZE * editorMapScale * EDITOR_BUTTON_HEIGHT_FACTOR;
     float buttonSpacing = TILE_SIZE * editorMapScale * EDITOR_BUTTON_SPACING_FACTOR;
@@ -143,7 +142,7 @@ void HandleLevelEditorInput(float globalScale, float offsetX, float offsetY)
 
         if (CheckCollisionPointRec(mousePos, saveButtonRect))
         {
-            currentGameState = LEVEL_EDITOR_SAVE_DIALOG; 
+            currentGameState = LEVEL_EDITOR_SAVE; 
             TraceLog(LOG_INFO, "Editor: 'Save and Play' button clicked. Opening save dialog.");
             return; 
             return;
@@ -288,8 +287,8 @@ void HandleLevelEditorInput(float globalScale, float offsetX, float offsetY)
           tombol-tombol alat, telah digambar ke layar. */
 void DrawLevelEditor(float globalScale, float offsetX, float offsetY)
 {
-    float screenWidth = (float)GetScreenWidth();
-    float screenHeight = (float)GetScreenHeight();
+    float screenWidth = (float)VIRTUAL_WIDTH;
+    float screenHeight = (float)VIRTUAL_HEIGHT;
     float availableWidth = screenWidth * (1.0f - 2 * EDITOR_VIEW_PADDING_SIDE_FACTOR);
     float availableHeight = screenHeight * (1.0f - EDITOR_VIEW_PADDING_TOP_FACTOR - EDITOR_VIEW_PADDING_BOTTOM_FACTOR);
     float baseMapWidth = MAP_COLS * TILE_SIZE;
@@ -432,6 +431,118 @@ void DrawLevelEditor(float globalScale, float offsetX, float offsetY)
                    saveButtonDrawRect, (Vector2){0, 0}, 0.0f, WHITE);
 }
 
+void UpdateEditor(void) {
+    PlayRegularMusic();
+    StopAllMusicExcept(regularBacksound);
+    if (!editorInitialized)
+    {
+        PlayTransitionAnimation(LEVEL_EDITOR);
+        InitializeLevelEditor(gameMap);
+        editorInitialized = true;
+        TraceLog(LOG_INFO, "Level editor initialized after transition.");
+    }
+    float margin = 25.0f;
+    float backButtonScale = 2.0f; 
+    Rectangle backButtonRect = { margin, margin, backButtonTex.width * backButtonScale, backButtonTex.height * backButtonScale };
+
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(mousePos, backButtonRect))
+    {
+        PlayTransitionAnimation(MAIN_MENU);
+        currentGameState = MAIN_MENU;
+        editorInitialized = false; 
+        UnloadLevelEditor();       
+        TraceLog(LOG_INFO, "Editor: Returning to MAIN_MENU via back button.");
+        return; 
+    }
+    HandleLevelEditorInput(currentTileScale, mapScreenOffsetX, mapScreenOffsetY);
+    if (GetEditorRequestSaveAndPlay())
+    {   
+        RestartGameplay();
+        SetEditorRequestSaveAndPlay(false);
+        editorInitialized = false;
+        UnloadLevelEditor();
+
+    }
+}
+
+void UpdateSaveMapEditor(){
+    int key = GetCharPressed();
+    while (key > 0)
+    {
+        if ((key >= 32) && (key <= 125) && (editorState.letterCount < 63))
+        {
+            editorState.textInputBuffer[editorState.letterCount] = (char)key;
+            editorState.textInputBuffer[editorState.letterCount+1] = '\0';
+            editorState.letterCount++;
+        }
+        key = GetCharPressed();
+    }
+
+    if (IsKeyPressed(KEY_BACKSPACE))
+    {
+        if (editorState.letterCount > 0)
+        {
+            editorState.letterCount--;
+            editorState.textInputBuffer[editorState.letterCount] = '\0';
+        }
+    }
+
+    float panelWidth = VIRTUAL_WIDTH * 0.4f;
+    float panelHeight = VIRTUAL_HEIGHT * 0.25f;
+    float panelX = (VIRTUAL_WIDTH - panelWidth) / 2.0f;
+    float panelY = (VIRTUAL_HEIGHT - panelHeight) / 2.0f;
+    float buttonWidth = 120;
+    float buttonHeight = 40;
+    Rectangle saveBtnRect = { panelX + panelWidth/2 - buttonWidth - 10, panelY + panelHeight - buttonHeight - 20, buttonWidth, buttonHeight };
+    Rectangle cancelBtnRect = { panelX + panelWidth/2 + 10, panelY + panelHeight - buttonHeight - 20, buttonWidth, buttonHeight };
+
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if (CheckCollisionPointRec(mousePos, saveBtnRect)) {
+            if (editorState.letterCount > 0) {
+                char finalPath[256];
+                snprintf(finalPath, sizeof(finalPath), "maps/%s.txt", editorState.textInputBuffer);
+
+                SaveLevelToFile(finalPath);
+                SetEditorMapFileName(finalPath);
+                SetEditorRequestSaveAndPlay(true);
+                currentGameState = LEVEL_EDITOR; 
+            }
+        } else if (CheckCollisionPointRec(mousePos, cancelBtnRect)) {
+            currentGameState = LEVEL_EDITOR; 
+        }
+    }
+}
+
+void DrawSaveMapEditor(){
+    DrawLevelEditor(currentTileScale, mapScreenOffsetX, mapScreenOffsetY);
+    DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, Fade(BLACK, 0.7f));
+    
+    float panelWidth = VIRTUAL_WIDTH * 0.4f;
+    float panelHeight = VIRTUAL_HEIGHT * 0.25f;
+    float panelX = (VIRTUAL_WIDTH - panelWidth) / 2.0f;
+    float panelY = (VIRTUAL_HEIGHT - panelHeight) / 2.0f;
+    DrawRectangleRec((Rectangle){panelX, panelY, panelWidth, panelHeight}, RAYWHITE);
+    DrawRectangleLinesEx((Rectangle){panelX, panelY, panelWidth, panelHeight}, 2, BLACK);
+    DrawText("Save Map As...", panelX + 20, panelY + 20, 20, BLACK);
+
+    Rectangle textBoxRect = { panelX + 20, panelY + 60, panelWidth - 40, 40 };
+    DrawRectangleRec(textBoxRect, LIGHTGRAY);
+    DrawRectangleLinesEx(textBoxRect, 1, DARKGRAY);
+    DrawText(editorState.textInputBuffer, textBoxRect.x + 10, textBoxRect.y + 10, 20, BLACK);
+    
+    if (editorState.letterCount < 63 && ((int)(GetTime()*2.0f) % 2 == 0) ) {
+        DrawText("|", textBoxRect.x + 10 + MeasureText(editorState.textInputBuffer, 20), textBoxRect.y + 10, 20, BLACK);
+    }
+    
+    float buttonWidth = 120;
+    float buttonHeight = 40;
+    Rectangle saveBtnRect = { panelX + panelWidth/2 - buttonWidth - 10, panelY + panelHeight - buttonHeight - 20, buttonWidth, buttonHeight };
+    Rectangle cancelBtnRect = { panelX + panelWidth/2 + 10, panelY + panelHeight - buttonHeight - 20, buttonWidth, buttonHeight };
+    DrawRectangleRec(saveBtnRect, DARKGREEN);
+    DrawText("Save", saveBtnRect.x + 40, saveBtnRect.y + 10, 20, WHITE);
+    DrawRectangleRec(cancelBtnRect, MAROON);
+    DrawText("Cancel", cancelBtnRect.x + 30, cancelBtnRect.y + 10, 20, WHITE);
+}
 /* Mengirimkan nilai enum dari tool yang sedang aktif dipilih oleh pemain. */
 EditorTool GetEditorSelectedTool() { return editorState.selectedTool; }
 

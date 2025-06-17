@@ -12,19 +12,31 @@
 
 #include "common.h"
 
-#define MENU_BG_DRAW_SCALE 2.0f      
-#define MENU_BUTTON_DRAW_SCALE 1.5f  
-#define BUTTON_SPACING_PX 5.0f
+#define MENU_BG_DRAW_SCALE 1.0f      
+#define MENU_BUTTON_DRAW_SCALE 1.0f  
+#define BUTTON_SPACING_PX 3.0f
 #define MAP_LIST_ITEM_HEIGHT 60
 #define MAP_LIST_VIEW_HEIGHT 200 
 #define PANEL_WIDTH_FACTOR 0.4f
-#define PANEL_HEIGHT_FACTOR 0.5f
+#define PANEL_HEIGHT_FACTOR 0.45f
 #define PANEL_PADDING 20.0f
-#define PANEL_BUTTON_HEIGHT 50.0f 
-#define PANEL_BUTTON_SPACING 10.0f
+#define PANEL_BUTTON_HEIGHT 40.0f 
+#define PANEL_BUTTON_SPACING 3.0f
 
 #define MAX_CUSTOM_MAPS 10
 #define MAP_FILENAME_MAX_LEN 256
+
+#define MAX_SKILLS_DISPLAY 20 // Jumlah maksimum skill yang bisa ditampilkan
+#define MAX_SKILL_DESC_LEN 256 // Panjang maksimum untuk deskripsi skill
+
+
+// Struct untuk menyimpan informasi skill yang sudah diekstrak dari tree
+typedef struct {
+    Texture2D icon;
+    const char* name;
+    char description[MAX_SKILL_DESC_LEN]; 
+    Rectangle buttonRect;
+} SkillDisplayInfo;
 
 extern Texture2D backgroundTex; 
 extern Texture2D menuBgTex;
@@ -95,5 +107,20 @@ void DrawCustomMapListMenu();
    F.S. : Program telah memindai direktori 'maps/', dan daftar peta kustom (array customMaps)
           telah diisi dengan nama-nama file peta yang valid. */
 void LoadCustomMapList();
+
+/* I.S. : Menu pengaturan belum diinisialisasi. Daftar skill mungkin kosong atau tidak relevan.
+   F.S. : Daftar skill telah dikumpulkan dari pohon upgrade dan siap ditampilkan.
+          Variabel-variabel state menu pengaturan diatur ke default. */
+void InitSettingsMenu(void);
+
+/* I.S. : Menu pengaturan sedang aktif dan menunggu input dari pengguna.
+   F.S. : Input pengguna (misalnya, klik pada skill atau tombol 'Back') telah diproses.
+          Skill yang dipilih diperbarui, atau state game diubah jika tombol navigasi diklik. */
+void UpdateSettingsMenu(void);
+
+/* I.S. : Menu pengaturan siap untuk digambar.
+   F.S. : Antarmuka pengguna menu pengaturan telah digambar ke layar,
+          termasuk petunjuk bermain, daftar skill, dan deskripsi skill yang dipilih. */
+void DrawSettingsMenu(void);
 
 #endif

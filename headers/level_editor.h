@@ -9,6 +9,7 @@
 #ifndef LEVEL_EDITOR_H
 #define LEVEL_EDITOR_H
 
+#include "common.h"
 #include "raylib.h"
 #include "map.h"
 
@@ -61,6 +62,7 @@ typedef struct
 } LevelEditorState;
 
 extern int customWaveCount;
+extern bool editorInitialized;
 extern LevelEditorState editorState;
 
 /* I.S. : State level editor belum terinisialisasi.
@@ -90,6 +92,23 @@ bool LoadLevelFromFile(const char *fileName);
 /* I.S. : State editor berisi data peta yang akan disimpan.
    F.S. : Data peta dari state editor telah ditulis dan disimpan ke dalam file 'fileName'. */
 void SaveLevelToFile(const char *fileName);
+
+/* I.S. : Level editor mungkin belum diinisialisasi atau berada dalam state sebelumnya.
+   F.S. : Level editor telah diinisialisasi jika belum, dan logikanya telah diperbarui
+          untuk frame saat ini (misalnya, menangani input dan transisi state). */
+void UpdateEditor(void);
+
+/* I.S. : Pengguna telah meminta untuk menyimpan peta di level editor, dan sekarang
+          berada dalam mode input nama file.
+   F.S. : Input teks nama file telah diproses. Jika tombol 'Save' diklik, peta akan
+          disimpan ke file dan permainan akan beralih ke mode gameplay dengan peta baru.
+          Jika 'Cancel' diklik, mode kembali ke editor. */
+void UpdateSaveMapEditor();
+
+/* I.S. : Layar level editor atau gameplay yang sedang diedit.
+   F.S. : Overlay untuk dialog penyimpanan peta telah digambar di atas layar,
+          termasuk kotak input teks dan tombol 'Save'/'Cancel'. */
+void DrawSaveMapEditor();
 
 /* Mengirimkan nilai enum dari tool yang sedang aktif dipilih oleh pemain. */
 EditorTool GetEditorSelectedTool();
