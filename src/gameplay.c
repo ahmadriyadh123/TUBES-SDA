@@ -232,20 +232,6 @@ void UpdateGameplay(float deltaTime) {
                 TraceLog(LOG_INFO, "All custom waves completed! Triggering LEVEL_COMPLETE state.");
                 currentGameState = LEVEL_COMPLETE;
             }
-            else {  
-                if (!isCustomGame || (isCustomGame && currentWaveNum < customWaveCount)) {
-                    if (activeWavesCount < MAX_ACTIVE_WAVES) {
-                        currentWaveNum++;
-                        TraceLog(LOG_INFO, "WAVE_INTERVAL finished. Creating Wave %d.", currentWaveNum);
-                        
-                        int startRow = GetEditorStartRow();
-                        int startCol = GetEditorStartCol();
-                        if (startRow == -1 || startCol == -1) { startRow = 0; startCol = 4; }
-                        EnemyWave* nextWave = CreateWave(startRow, startCol);
-                        if (nextWave) activeWaves[activeWavesCount++] = nextWave;
-                    }
-                }
-            }
             timeToNextWave = -1.0f;
         }
     }
@@ -292,9 +278,6 @@ void HandleGameplayInput(Vector2 mousePos)
                     
                     SetWaveTimerCurrentTime(wave, GetWaveTimerDuration(wave));
                     Push(&statusStack, "Wave accelerated!");
-                    if (timeToNextWave < 0) {
-                        timeToNextWave = WAVE_INTERVAL;
-                    }
                     PlayBattleMusic();
                     return; 
                 }
