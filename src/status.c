@@ -56,7 +56,7 @@ static void RemoveTopAndShiftUp(Stack *S) {
 
 /* IS : S mungkin sudah berisi pesan. */
 /* FS : 'message' menjadi TOP yang baru. Jika stack penuh, elemen paling bawah akan terhapus. */
-void Push(Stack S, const char message) {
+void Push(Stack *S, const char* message) {
     bool isStackFull = (S->messages[MAX_STACK_SIZE - 1][0] != '\0');
 
     if (isStackFull) {
@@ -69,8 +69,12 @@ void Push(Stack S, const char message) {
     S->alphas[0] = 1.0f;
     S->timers[0] = 3.0f; 
     S->posX[0] = -400.0f;
+    for (int i = 1; i < MAX_STACK_SIZE; i++) {
+        if (S->messages[i][0] != '\0') {
+            S->alphas[i] = 1.0f;
+        }
+    }
 }
-
 /* IS : S adalah stack status. */
 /* FS : Timer dan alpha dari setiap pesan di dalam S di-update. */
 // File: tubes1/status.c
