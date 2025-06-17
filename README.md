@@ -3,13 +3,15 @@ KELAS 1B D3 MORPHRAX
 PROGRAM GAME TOWER DEFENSE
 # Tower Defense Game
 
-![Gameplay Screenshot](assets/img/gameplay_imgs/pratinjau.png)
+![Gameplay Screenshot](assets/img/first%20layout.png)
+
 
 ## Deskripsi Proyek
 
 Tower Defense Game adalah permainan strategi menara pertahanan yang dibangun menggunakan framework Raylib. Dalam game ini, pemain bertugas untuk membangun dan meng-upgrade berbagai jenis menara (tower) untuk mencegah gelombang musuh (enemies) mencapai ujung jalur. Permainan ini menawarkan fitur-fitur seperti sistem upgrade pohon yang bercabang, berbagai tipe musuh, manajemen sumber daya, dan editor level kustom.
 
 Proyek ini dikembangkan dengan fokus pada modularitas kode C, menjadikannya mudah untuk diperluas dan dipelihara. Setiap komponen game (seperti peta, menara, musuh, UI, dan audio) diatur dalam modulnya sendiri dengan header (`.h`) dan file implementasi (`.c`) terpisah, mempromosikan desain yang bersih dan terorganisir.
+
 
 ## Fitur Utama
 
@@ -31,41 +33,7 @@ Proyek ini dikembangkan dengan fokus pada modularitas kode C, menjadikannya muda
 * **Manajemen Audio:** Musik latar yang dinamis (regular dan battle) serta efek suara untuk aksi dalam game (kalahkan musuh, transaksi uang).
 * **Animasi Transisi Halus:** Transisi visual yang mulus antara state game yang berbeda (menu utama, gameplay, editor).
 
-## Struktur Proyek
-Tentu, saya akan bantu membuatkan README.md yang informatif, interaktif, lengkap, dan profesional untuk program Tower Defense Anda. README.md ini akan mencakup semua aspek penting dari proyek Anda.
-
-Markdown
-
-# Tower Defense Game
-
-![Gameplay Screenshot](docs/images/gameplay_screenshot.png)
-*(Contoh screenshot gameplay - Anda dapat menggantinya dengan screenshot aktual dari game Anda)*
-
-## Deskripsi Proyek
-
-Tower Defense Game adalah permainan strategi menara pertahanan yang dibangun menggunakan framework Raylib. Dalam game ini, pemain bertugas untuk membangun dan meng-upgrade berbagai jenis menara (tower) untuk mencegah gelombang musuh (enemies) mencapai ujung jalur. Permainan ini menawarkan fitur-fitur seperti sistem upgrade pohon yang bercabang, berbagai tipe musuh, manajemen sumber daya, dan editor level kustom.
-
-Proyek ini dikembangkan dengan fokus pada modularitas kode C, menjadikannya mudah untuk diperluas dan dipelihara. Setiap komponen game (seperti peta, menara, musuh, UI, dan audio) diatur dalam modulnya sendiri dengan header (`.h`) dan file implementasi (`.c`) terpisah, mempromosikan desain yang bersih dan terorganisir.
-
-## Fitur Utama
-
-* **Sistem Gameplay Inti:** Pertahanan menara klasik di mana pemain menempatkan menara untuk menyerang gelombang musuh yang bergerak sepanjang jalur yang telah ditentukan.
-* **Beragam Tipe Menara:** Tersedia berbagai tipe menara dengan kemampuan dasar yang berbeda.
-* **Pohon Upgrade Menara:** Setiap menara memiliki pohon upgrade yang bercabang, memungkinkan pemain untuk mengkhususkan menara dengan efek serangan unik seperti:
-    * **Serangan Kilat:** Meningkatkan kecepatan serangan secara signifikan.
-    * **Serangan Berantai:** Menyerang banyak musuh secara berurutan.
-    * **Serangan Area (AoE):** Merusak beberapa musuh dalam satu area.
-    * **Serangan Kritikal:** Peluang untuk memberikan kerusakan lebih besar.
-    * **Efek Stun:** Peluang untuk menghentikan musuh sesaat.
-    * **Racun Mematikan:** Serangan meracuni musuh.
-    * **Perlambat Massal:** Menerapkan efek perlambat pada area luas.
-* **Sistem Ekonomi:** Kelola uang Anda dengan bijak untuk membangun dan meng-upgrade menara. Dapatkan uang dengan mengalahkan musuh.
-* **Sistem Nyawa:** Lindungi pangkalan Anda! Kehilangan nyawa jika musuh berhasil mencapai ujung jalur. Permainan berakhir jika nyawa habis.
-* **Menu Utama Interaktif:** Navigasi yang mudah antara game, editor level, dan pengaturan.
-* **Editor Level Kustom:** Buat dan simpan peta pertahanan menara Anda sendiri dengan mudah. Tentukan jalur musuh, lokasi penempatan menara, titik awal musuh, dan jumlah gelombang.
-* **Pesan Status Dinamis:** Notifikasi pop-up dalam game untuk memberikan umpan balik instan kepada pemain (misalnya, "Tower placed successfully!", "Not enough money!").
-* **Manajemen Audio:** Musik latar yang dinamis (regular dan battle) serta efek suara untuk aksi dalam game (kalahkan musuh, transaksi uang).
-* **Animasi Transisi Halus:** Transisi visual yang mulus antara state game yang berbeda (menu utama, gameplay, editor).
+![Gameplay Screenshot](assets/img/preview.png)
 
 ## Memulai Proyek
 
@@ -163,20 +131,20 @@ Menu **Guide** (sebenarnya berfungsi sebagai panduan/guide dalam implementasi sa
 * **Daftar Skill Upgrade:** Lihat semua upgrade yang tersedia untuk menara, lengkap dengan ikon, nama, dan deskripsi efeknya.
     * Pilih skill dari daftar untuk melihat detail deskripsinya.
 
-### Modul-modul Kunci
-
-* `common.h`: Definisi tipe data umum (GameState, UpgradeType, UpgradeNode) yang digunakan di seluruh program.
-* `map.h`/`map.c`: Mengelola grid peta, aset tile, dan data jalur.
-* `enemy.h`/`enemy.c`: Definisi dan logika untuk musuh dan gelombang musuh (pergerakan, HP, animasi).
-* `tower.h`/`tower.c`: Definisi dan logika untuk menara (penempatan, serangan, manajemen UI orbit).
-* `upgrade_tree.h`/`upgrade_tree.c`: Mengelola struktur pohon upgrade menara dan logika penerapannya.
-* `player_resources.h`/`player_resources.c`: Mengelola uang dan nyawa pemain.
-* `status.h`/`status.c`: Implementasi stack untuk menampilkan pesan status dinamis.
-* `main_menu.h`/`main_menu.c`: Menangani antarmuka dan logika untuk menu utama dan sub-menu.
-* `level_editor.h`/`level_editor.c`: Fungsionalitas untuk membuat dan mengedit peta kustom.
-* `audio.h`/`audio.c`: Mengelola semua pemuatan, pemutaran, dan pembersihan aset audio game.
-* `transition.h`/`transition.c`: Mengelola animasi transisi antar state game.
-* `utils.h`/`utils.c`: Fungsi-fungsi utilitas umum (misalnya, pemuatan tekstur/musik yang aman).
+### File
+#####
+* `common.h`: Definisi tipe data umum (GameState, UpgradeType, UpgradeNode) yang digunakan di seluruh program.`Pengelola: Ahmad Riyadh Almaliki`
+* `map.h`/`map.c`: Mengelola grid peta, aset tile, dan data jalur.`Pengelola: Ahmad Riyadh Almaliki`
+* `enemy.h`/`enemy.c`: Definisi dan logika untuk musuh dan gelombang musuh (pergerakan, HP, animasi).`Pengelola: Micky Ridho Pratama`
+* `tower.h`/`tower.c`: Definisi dan logika untuk menara (penempatan, serangan, manajemen UI orbit).`Pengelola: Ahmad Riyadh Almaliki`
+* `upgrade_tree.h`/`upgrade_tree.c`: Mengelola struktur pohon upgrade menara dan logika penerapannya.`Pengelola: Ahmad Riyadh Almaliki`
+* `player_resources.h`/`player_resources.c`: Mengelola uang dan nyawa pemain.`Pengelola: Mohamad Jibril Fathi Al-Ghifari`
+* `status.h`/`status.c`: Implementasi stack untuk menampilkan pesan status dinamis.`Pengelola: Mohamad Jibril Fathi Al-Ghifari`
+* `main_menu.h`/`main_menu.c`: Menangani antarmuka dan logika untuk menu utama dan sub-menu.`Pengelola: Mohamad Jibril Fathi Al-Ghifari`
+* `level_editor.h`/`level_editor.c`: Fungsionalitas untuk membuat dan mengedit peta kustom.`Pengelola: Mohamad Jibril Fathi Al-Ghifari`
+* `audio.h`/`audio.c`: Mengelola semua pemuatan, pemutaran, dan pembersihan aset audio game.`Pengelola: Mohamad Jibril Fathi Al-Ghifari`
+* `transition.h`/`transition.c`: Mengelola animasi transisi antar state game.`Pengelola: Ahmad Riyadh Almaliki`
+* `utils.h`/`utils.c`: Fungsi-fungsi utilitas umum (misalnya, pemuatan tekstur/musik yang aman).`Pengelola: Ahmad Riyadh Almaliki`
 
 
 Tautan Proyek: [https://github.com/NamaPenggunaAnda/NamaProyekAnda](https://github.com/ahmadriyadh123/TUBES-SDA)
