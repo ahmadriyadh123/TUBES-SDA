@@ -26,6 +26,7 @@ static Texture2D upgradeIcon_LargeAoERadius = {0};
 static Texture2D upgradeIcon_HighCritChance = {0};
 static Texture2D upgradeIcon_LethalPoison = {0};
 static Texture2D upgradeIcon_MassSlow = {0};
+static Texture2D upgradeIcon_CustomStat = {0};
 static Texture2D acceptIconTex = { 0 };
 static Texture2D lockedIconTex;
 static UpgradeNode *currentOrbitParentNode = NULL;
@@ -34,6 +35,24 @@ static UpgradeNode *prevOrbitParentNode = NULL;
 TowerUpgradeTree tower1UpgradeTree;
 UpgradeNode* pendingUpgradeNode = NULL;
 Vector2 pendingUpgradeIconPos = { 0 };
+
+void AddChild(UpgradeNode* parent, UpgradeNode* child) {
+    if (!parent || !child) return;
+    
+    child->parent = parent; // Tetap set parent-nya
+
+    // Jika parent belum punya anak sama sekali
+    if (parent->firstChild == NULL) {
+        parent->firstChild = child;
+    } else {
+        // Jika sudah punya anak, cari anak terakhir dan tambahkan child baru sebagai saudaranya
+        UpgradeNode* sibling = parent->firstChild;
+        while (sibling->nextSibling != NULL) {
+            sibling = sibling->nextSibling;
+        }
+        sibling->nextSibling = child;
+    }
+}
 
 /*
 I.S : Parameter-parameter seperti type, name, desc, cost, parent, dan exclusiveGroupId telah siap untuk digunakan dalam pembuatan node baru.
@@ -63,6 +82,7 @@ UpgradeNode *CreateUpgradeNode(UpgradeType type, const char *name, const char *d
           membentuk sebuah pohon upgrade yang lengkap untuk 'type' tower yang ditentukan. */
 void InitUpgradeTree(TowerUpgradeTree *tree, TowerType type)
 {
+    // Memuat semua tekstur ikon yang dibutuhkan
     lockedIconTex = LoadTextureSafe("assets/img/upgrade_imgs/locked.png");
     
     upgradeIcon_AttackSpeedBase = LoadTextureSafe("assets/img/upgrade_imgs/speed_upgrade.png"); 
@@ -78,47 +98,53 @@ void InitUpgradeTree(TowerUpgradeTree *tree, TowerType type)
     upgradeIcon_HighCritChance = LoadTextureSafe("assets/img/upgrade_imgs/critical_upgrade(2).png"); 
     upgradeIcon_LethalPoison = LoadTextureSafe("assets/img/upgrade_imgs/poison_upgrade.png"); 
     upgradeIcon_MassSlow = LoadTextureSafe("assets/img/upgrade_imgs/slow_upgrade.png"); 
+    upgradeIcon_CustomStat = LoadTextureSafe("assets/img/upgrade_imgs/nodeskill.png"); 
     acceptIconTex = LoadTextureSafe("assets/img/upgrade_imgs/accept.png"); 
 
     TraceLog(LOG_INFO, "Initializing upgrade tree for Tower Type %d", type);
 
+    // Membuat Node Root
     tree->root = CreateUpgradeNode(UPGRADE_NONE, "Upgrade Tower", "Pilih jalur upgrade", 0, NULL, 0);
     if (!tree->root)
         return;
     tree->root->status = UPGRADE_UNLOCKED;
 
+    // --- TIER 1: Cabang Utama ---
     UpgradeNode *speedBase = CreateUpgradeNode(UPGRADE_ATTACK_SPEED_BASE, "Upgrade Kecepatan Serangan", "Meningkatkan kecepatan serangan dasar.", 0, tree->root, 1);
     UpgradeNode *powerBase = CreateUpgradeNode(UPGRADE_ATTACK_POWER_BASE, "Upgrade Kekuatan Serangan", "Meningkatkan kekuatan serangan dasar.", 0, tree->root, 1);
     UpgradeNode *specialBase = CreateUpgradeNode(UPGRADE_SPECIAL_EFFECT_BASE, "Upgrade Efek Khusus", "Membuka jalur efek khusus.", 0, tree->root, 1);
+    
+    // Menambahkan anak ke root
+    AddChild(tree->root, speedBase);
+    AddChild(tree->root, powerBase);
+    AddChild(tree->root, specialBase);
 
-    tree->root->children[tree->root->numChildren++] = speedBase;
-    tree->root->children[tree->root->numChildren++] = powerBase;
-    tree->root->children[tree->root->numChildren++] = specialBase;
-
+    // --- TIER 2: Spesialisasi Awal ---
     UpgradeNode *lightning = CreateUpgradeNode(UPGRADE_LIGHTNING_ATTACK, "Serangan Kilat", "Serangan sangat cepat.", 75, speedBase, 2);
     UpgradeNode *chain = CreateUpgradeNode(UPGRADE_CHAIN_ATTACK, "Serangan Berantai", "Serangan melompat ke musuh terdekat.", 100, speedBase, 2);
-    speedBase->children[speedBase->numChildren++] = lightning;
-    speedBase->children[speedBase->numChildren++] = chain;
+    AddChild(speedBase, lightning);
+    AddChild(speedBase, chain);
 
     UpgradeNode *area = CreateUpgradeNode(UPGRADE_AREA_ATTACK, "Serangan Area", "Serangan merusak beberapa musuh sekaligus.", 110, powerBase, 3);
     UpgradeNode *critical = CreateUpgradeNode(UPGRADE_CRITICAL_ATTACK, "Serangan Kritikal", "Meningkatkan peluang critical hit.", 120, powerBase, 3);
-    powerBase->children[powerBase->numChildren++] = area;
-    powerBase->children[powerBase->numChildren++] = critical;
+    AddChild(powerBase, area);
+    AddChild(powerBase, critical);
 
     UpgradeNode *poison = CreateUpgradeNode(UPGRADE_LETHAL_POISON, "Racun Mematikan", "Serangan meracuni musuh.", 150, specialBase, 4);
     UpgradeNode *massSlow = CreateUpgradeNode(UPGRADE_MASS_SLOW, "Perlambat Massal", "Serangan memperlambat area luas.", 160, specialBase, 4);
-    specialBase->children[specialBase->numChildren++] = poison;
-    specialBase->children[specialBase->numChildren++] = massSlow;
+    AddChild(specialBase, poison);
+    AddChild(specialBase, massSlow);
 
+    // --- TIER 3: Spesialisasi Lanjutan ---
     UpgradeNode *stun = CreateUpgradeNode(UPGRADE_STUN_EFFECT, "Efek Stun", "Serangan Kilat memiliki peluang stun.", 180, lightning, 5);
     UpgradeNode *wideChain = CreateUpgradeNode(UPGRADE_WIDE_CHAIN_RANGE, "Jangkauan Berantai Luas", "Meningkatkan jangkauan lompatan.", 160, chain, 6);
     UpgradeNode *largeAoE = CreateUpgradeNode(UPGRADE_LARGE_AOE_RADIUS, "Jangkauan AoE Lebih Besar", "Meningkatkan radius Serangan Area.", 170, area, 7);
     UpgradeNode *highCrit = CreateUpgradeNode(UPGRADE_HIGH_CRIT_CHANCE, "Peluang Kritikal Tinggi", "Meningkatkan peluang critical hit secara signifikan.", 180, critical, 8);
 
-    lightning->children[lightning->numChildren++] = stun;
-    chain->children[chain->numChildren++] = wideChain;
-    area->children[area->numChildren++] = largeAoE;
-    critical->children[critical->numChildren++] = highCrit;
+    AddChild(lightning, stun);
+    AddChild(chain, wideChain);
+    AddChild(area, largeAoE);
+    AddChild(critical, highCrit);
 }
 
 /* Mengirimkan aset Texture2D yang berasosiasi dengan 'type' upgrade tertentu. */
@@ -153,7 +179,10 @@ Texture2D GetUpgradeIconTexture(UpgradeType type)
     case UPGRADE_MASS_SLOW:
         return upgradeIcon_MassSlow;
     default:
-        return (Texture2D){0};
+        if (type >= 100) { 
+            return upgradeIcon_CustomStat;
+        }
+        return (Texture2D){0}; 
     }
 }
 
@@ -162,14 +191,19 @@ static bool IsExclusiveSiblingPurchased(const UpgradeNode *node, const struct To
     if (!node || !node->parent || !tower || node->exclusiveGroupId == 0) {
         return false;
     }
+
     UpgradeNode* parent = node->parent;
-    for (int i = 0; i < parent->numChildren; i++) {
-        UpgradeNode* sibling = parent->children[i];
-        
-        if (sibling && sibling != node && sibling->exclusiveGroupId == node->exclusiveGroupId && tower->purchasedUpgrades[sibling->type]) {
+    UpgradeNode* sibling = parent->firstChild;
+    
+    // Lakukan loop sepanjang rantai saudara
+    while (sibling != NULL) {
+        if (sibling != node && sibling->exclusiveGroupId == node->exclusiveGroupId && tower->purchasedUpgrades[sibling->type]) {
             return true; 
         }
+        // Pindah ke saudara berikutnya
+        sibling = sibling->nextSibling;
     }
+
     return false; 
 }
 
@@ -177,22 +211,23 @@ static bool IsExclusiveSiblingPurchased(const UpgradeNode *node, const struct To
 static UpgradeNode* FindCurrentUpgradeNode_Recursive(UpgradeNode* currentNode, const struct Tower* tower) {
     if (!currentNode || !tower) return NULL;
 
-    // Cek apakah ada anak dari node ini yang sudah dibeli
-    for (int i = 0; i < currentNode->numChildren; i++) {
-        UpgradeNode* child = currentNode->children[i];
-        if (child && tower->purchasedUpgrades[child->type]) {
-            // Jika ada, lanjutkan pencarian dari anak tersebut
+    // Mulai iterasi dari anak pertama
+    UpgradeNode* child = currentNode->firstChild;
+    while (child != NULL) {
+        // Cek apakah anak ini sudah dibeli
+        if (tower->purchasedUpgrades[child->type]) {
+            // Jika ya, lanjutkan pencarian secara rekursif dari anak ini
             return FindCurrentUpgradeNode_Recursive(child, tower);
         }
+        // Pindah ke saudara berikutnya
+        child = child->nextSibling;
     }
-
-    // Jika tidak ada anak yang dibeli, berarti ini adalah node terakhir.
-    // Kita juga harus memastikan node ini sendiri sudah dibeli (atau merupakan root)
+    // Jika tidak ada anak yang dibeli, berarti ini adalah node terjauh yang valid.
+    // Pastikan node ini sendiri sudah dibeli (atau merupakan root)
     if (tower->purchasedUpgrades[currentNode->type] || currentNode->parent == NULL) {
         return currentNode;
     }
-
-    return currentNode->parent; // Fallback jika terjadi kondisi aneh
+    return currentNode->parent;
 }
 
 // Fungsi publik yang akan dipanggil dari luar
@@ -205,17 +240,16 @@ UpgradeNode* FindCurrentUpgradeNode(const struct Tower* tower) {
    F.S. : Status dari 'node' dan semua turunannya telah diperbarui. */
 static void UpdateAllNodesRecursive(UpgradeNode* node, const struct Tower* tower) {
     if (!node || !tower) return;
-    
+
+    // Logika untuk memproses node saat ini 
     if (tower->purchasedUpgrades[node->type]) {
         node->status = UPGRADE_PURCHASED;
     } else {
-        
         if (node->parent == NULL) { 
             node->status = UPGRADE_PURCHASED; 
         } else if (node->parent->status != UPGRADE_PURCHASED) {
             node->status = UPGRADE_LOCKED; 
         } else {
-            
             if (IsExclusiveSiblingPurchased(node, tower)) {
                 node->status = UPGRADE_LOCKED_EXCLUDED; 
             } else {
@@ -224,8 +258,11 @@ static void UpdateAllNodesRecursive(UpgradeNode* node, const struct Tower* tower
         }
     }
 
-    for (int i = 0; i < node->numChildren; i++) {
-        UpdateAllNodesRecursive(node->children[i], tower);
+
+    UpgradeNode* child = node->firstChild;
+    while (child != NULL) {
+        UpdateAllNodesRecursive(child, tower);
+        child = child->nextSibling; 
     }
 }
 
@@ -263,6 +300,27 @@ void NavigateUpgradeOrbit(UpgradeNode *targetNode)
     TraceLog(LOG_INFO, "Navigated to orbit node: %s", targetNode->name);
 }
 
+UpgradeNode* FindNodeByType(UpgradeNode* startNode, UpgradeType type) {
+    if (!startNode) {
+        return NULL;
+    }
+    if (startNode->type == type) {
+        return startNode;
+    }
+
+    UpgradeNode* foundNode = NULL;
+    UpgradeNode* child = startNode->firstChild;
+    while (child != NULL) {
+        foundNode = FindNodeByType(child, type);
+        if (foundNode) {
+            return foundNode; // Ditemukan di cabang ini
+        }
+        child = child->nextSibling;
+    }
+
+    return NULL; // Tidak ditemukan di cabang mana pun
+}
+
 /* I.S. : 'tower' memiliki status (damage, speed, dll.) sebelum upgrade.
    F.S. : 'tower' telah dimodifikasi sesuai dengan efek dari upgrade 'type'.
           Contoh: damage bertambah, atau properti boolean seperti 'hasChainAttack' menjadi true. */
@@ -271,6 +329,7 @@ void ApplyUpgradeEffect(Tower *tower, UpgradeType type)
     if (!tower) return;
 
     tower->purchasedUpgrades[type] = true;
+    UpgradeNode* appliedNode = FindNodeByType(GetUpgradeTreeRoot(&tower1UpgradeTree), type);
     TraceLog(LOG_INFO, "Applying upgrade %d to tower at (%d,%d).", type, tower->row, tower->col);
 
     switch (type)
@@ -348,7 +407,6 @@ void ApplyUpgradeEffect(Tower *tower, UpgradeType type)
  
         }
         break;
-
     default:
         TraceLog(LOG_WARNING, "Attempted to apply unknown upgrade type: %d", type);
         break;
@@ -424,14 +482,9 @@ bool HandleUpgradeOrbitClick(Vector2 mousePos, float currentTileScale)
                                        
                     Push(&statusStack, TextFormat("Path chosen: %s", childNode->name));
                     ApplyUpgradeEffect(selectedTowerForDeletion, childNode->type);
-
-                    
                     UpdateUpgradeTreeStatus(&tower1UpgradeTree, selectedTowerForDeletion);
-
-                    
                     NavigateUpgradeOrbit(childNode);
 
-                    
                     pendingUpgradeNode = NULL;
                     
                 }
@@ -503,6 +556,66 @@ void DrawUpgradeOrbitMenu(float currentTileScale, float mapScreenOffsetX, float 
                 iconDrawSize};
             DrawTexturePro(upgradeIcon, (Rectangle){0, 0, (float)upgradeIcon.width, (float)upgradeIcon.height}, iconDestRect, (Vector2){0, 0}, 0.0f, WHITE);
         }
+        if (childNode->type >= 100) {
+            // Teks untuk baris pertama dan kedua
+            const char* line1 = "Stat Boost";
+            char line2[16];
+            sprintf(line2, "$%d", childNode->cost);
+
+            // Pengaturan Font
+            float fontSize = 14.0f;
+            float lineSpacing = 2.0f; // Jarak antar baris
+            Color textColor = (childNode->status == UPGRADE_LOCKED) ? GRAY : WHITE;
+            Color costColor = (GetMoney() >= childNode->cost) ? GOLD : RED;
+
+            // Hitung tinggi total dari kedua baris teks
+            float totalTextHeight = (fontSize * 2) + lineSpacing;
+
+            // Hitung posisi untuk memusatkan blok teks secara vertikal
+            float startY = buttonRect.y + (buttonRect.height - totalTextHeight) / 2;
+
+            // Hitung posisi dan gambar baris pertama (nama skill)
+            int textWidth1 = MeasureText(line1, fontSize);
+            DrawText(line1, 
+                     (int)(buttonRect.x + (buttonRect.width - textWidth1) / 2), 
+                     (int)startY, 
+                     fontSize, 
+                     textColor);
+
+            // Hitung posisi dan gambar baris kedua (harga)
+            int textWidth2 = MeasureText(line2, fontSize);
+            DrawText(line2, 
+                     (int)(buttonRect.x + (buttonRect.width - textWidth2) / 2), 
+                     (int)(startY + fontSize + lineSpacing), 
+                     fontSize, 
+                     costColor);
+                     
+        } else {
+            // Untuk skill standar, kita tetap tampilkan nama dan harga di bawahnya
+            // (Blok else ini sama seperti sebelumnya, tidak perlu diubah)
+            int fontSize = 15;
+            Color textColor = (childNode->status == UPGRADE_LOCKED) ? GRAY : WHITE;
+            if (childNode->status == UPGRADE_PURCHASED) textColor = GOLD;
+
+            int textWidth = MeasureText(childNode->name, fontSize);
+            DrawText(childNode->name, 
+                     (int)(buttonRect.x + (buttonRect.width - textWidth) / 2), 
+                     (int)(buttonRect.y + buttonRect.height + 5),
+                     fontSize, 
+                     textColor);
+
+            if (childNode->cost > 0 && childNode->status == UPGRADE_UNLOCKED) {
+                char costText[16];
+                sprintf(costText, "$%d", childNode->cost);
+                int costFontSize = 14;
+                int costTextWidth = MeasureText(costText, costFontSize);
+                DrawText(costText, 
+                         (int)(buttonRect.x + (buttonRect.width - costTextWidth) / 2), 
+                         (int)(buttonRect.y + buttonRect.height + 22),
+                         costFontSize, 
+                         GOLD);
+            }
+        }
     }
     if (pendingUpgradeNode != NULL) {
         float iconSize = 16.0f * currentTileScale;
@@ -519,11 +632,28 @@ void DrawUpgradeOrbitMenu(float currentTileScale, float mapScreenOffsetX, float 
 
 /* I.S. : 'node' dan semua turunannya mungkin masih dialokasikan di memori.
  * F.S. : Memori untuk 'node' dan semua turunannya telah dibebaskan. */
-static void FreeUpgradeNode(UpgradeNode* node) {
-    if (!node) return;
-    for (int i = 0; i < node->numChildren; i++) {
-        FreeUpgradeNode(node->children[i]);
+static void FreeUpgradeNode(UpgradeNode *node)
+{
+    if (!node)
+        return;
+
+    // 1. Kunjungi dan bebaskan semua anak terlebih dahulu
+    UpgradeNode* child = node->firstChild;
+    while (child != NULL) {
+        UpgradeNode* next = child->nextSibling;
+        FreeUpgradeNode(child);
+        child = next;
     }
+
+    // TAMBAHKAN BLOK INI:
+    // Hanya bebaskan nama dan deskripsi jika ini adalah skill kustom
+    // (dengan asumsi ID di atas 100 adalah kustom, sesuai implementasi di research_menu.c)
+    if (node->type >= 100) {
+        free((void*)node->name);
+        free((void*)node->description);
+    }
+
+    // Bebaskan node itu sendiri
     free(node);
 }
 
@@ -545,16 +675,39 @@ UpgradeNode* GetUpgradeTreeRoot(TowerUpgradeTree* tree) {
 
 /* I.S. : 'parent' adalah node yang valid dan 'n' adalah indeks anak yang diinginkan.
    F.S. : Mengirimkan pointer ke anak ke-'n' dari 'parent'. Mengembalikan NULL jika 'n' di luar batas. */
-UpgradeNode* GetNthChild(UpgradeNode* parent, int n) {
-    if (!parent || n < 0 || n >= parent->numChildren) {
+UpgradeNode *GetNthChild(UpgradeNode *parent, int n)
+{
+    if (!parent || n < 0) {
         return NULL;
     }
-    return parent->children[n];
+    // Mulai dari anak pertama
+    UpgradeNode* currentChild = parent->firstChild;
+    int count = 0;
+
+    // Lakukan iterasi sepanjang rantai saudara
+    while (currentChild != NULL) {
+        if (count == n) {
+            return currentChild;
+        }
+        currentChild = currentChild->nextSibling;
+        count++;
+    }
+
+    return NULL; 
 }
 
 /* Mengirimkan jumlah anak langsung yang dimiliki oleh sebuah 'node'. Mengembalikan 0 jika node NULL. */
-int GetNumChildren(UpgradeNode* node) {
-    return node ? node->numChildren : 0;
+int GetNumChildren(UpgradeNode *node)
+{
+    if (!node) return 0;
+
+    int count = 0;
+    UpgradeNode* child = node->firstChild;
+    while (child != NULL) {
+        count++;
+        child = child->nextSibling;
+    }
+    return count;
 }
 
 /* I.S. : Menu orbit mungkin berpusat pada node yang berbeda atau NULL.

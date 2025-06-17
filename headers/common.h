@@ -83,8 +83,8 @@ typedef struct UpgradeNode {
     UpgradeStatus status;
     struct UpgradeNode* parent; 
     
-    struct UpgradeNode* children[3]; 
-    int numChildren;
+    struct UpgradeNode* firstChild;  
+    struct UpgradeNode* nextSibling;
     
     int exclusiveGroupId;
     Vector2 uiPosition; 

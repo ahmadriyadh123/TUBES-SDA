@@ -429,9 +429,10 @@ static void PopulateSkillListRecursive(UpgradeNode* node) {
         skillCount++;
     }
 
-    // Lanjutkan ke anak-anaknya
-    for (int i = 0; i < node->numChildren; i++) {
-        PopulateSkillListRecursive(node->children[i]);
+    UpgradeNode* child = node->firstChild;
+    while (child != NULL) {
+        PopulateSkillListRecursive(child);
+        child = child->nextSibling; 
     }
 }
 
