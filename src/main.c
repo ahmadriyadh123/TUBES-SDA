@@ -2,24 +2,36 @@
 #include "gameplay.h"
 #include "level_editor.h"
 #include "main_menu.h"
-#include "audio.h"
+#include "upgrade_tree.h"
 #include "research_menu.h"
+
 #include "transition.h"
+#include "audio.h"
 
 int main() {
-    
     InitWindow(VIRTUAL_WIDTH, VIRTUAL_HEIGHT, "Tower Defense");
     SetTargetFPS(60); 
     SetTraceLogLevel(LOG_INFO); 
     
     LoadMainMenuResources();  
     InitGameplay();
+    LoadProgress(&playerProgress); // <-- 2. TAMBAHKAN PEMUATAN PROGRES DI SINI
+    InitUpgradeTree(&tower1UpgradeTree, TOWER_TYPE_1); 
     InitSettingsMenu();
+    InitResearchMenu();
     InitGameAudio(); 
 
     while (!WindowShouldClose() && currentGameState != EXITING) {
         float deltaTime = GetFrameTime(); 
         mousePos = GetMousePosition();
+
+        float screenWidth = (float)VIRTUAL_WIDTH;
+        float screenHeight = (float)VIRTUAL_HEIGHT;
+        float baseMapWidth = MAP_COLS * TILE_SIZE;
+        float baseMapHeight = MAP_ROWS * TILE_SIZE;
+        currentTileScale = fmin((float)VIRTUAL_WIDTH / baseMapWidth, (float)VIRTUAL_HEIGHT / baseMapHeight);
+        mapScreenOffsetX = (screenWidth - baseMapWidth * currentTileScale) / 2.0f;
+        mapScreenOffsetY = (screenHeight - baseMapHeight * currentTileScale) / 2.0f;
 
         BeginDrawing();
         ClearBackground(RAYWHITE);
@@ -103,6 +115,7 @@ int main() {
     UnloadGameplay();
     UnloadMainMenuResources();
     UnloadLevelEditor();
+    FreeUpgradeTree(&tower1UpgradeTree);
     UnloadGameAudio();
     TraceLog(LOG_INFO, "All game modules unloaded.");
     CloseWindow();
