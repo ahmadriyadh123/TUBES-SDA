@@ -12,6 +12,7 @@
 
 extern Vector2 mousePos;
 extern bool gameplayInitialized;
+extern GameState previousGameState;
 extern float currentTileScale;
 extern float mapScreenOffsetX;
 extern float mapScreenOffsetY;

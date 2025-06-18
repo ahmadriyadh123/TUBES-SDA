@@ -22,6 +22,7 @@
 
 char currentMapName[256]; 
 bool gameplayInitialized = false;
+GameState previousGameState;
 static EnemyWave* activeWaves[MAX_ACTIVE_WAVES] = {0};
 static int activeWavesCount = 0;
 static float timeToNextWave = -1.0f;
@@ -30,7 +31,6 @@ float currentTileScale = 1.0f;
 float mapScreenOffsetX = 0.0f;
 float mapScreenOffsetY = 0.0f;
 
-static GameState previousGameState;
 static Texture2D moneyIconTex;
 static Texture2D lifeIconTex;
 static Texture2D pauseButtonTex;

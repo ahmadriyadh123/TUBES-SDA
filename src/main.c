@@ -3,6 +3,7 @@
 #include "level_editor.h"
 #include "main_menu.h"
 #include "audio.h"
+#include "research_menu.h"
 #include "transition.h"
 
 int main() {
@@ -40,6 +41,10 @@ int main() {
         case MAIN_MENU_CUSTOM_MAP_LIST:
             UpdateCustomMapListMenu();        
             DrawCustomMapListMenu();
+            break;
+        case RESEARCH_MENU:
+            UpdateResearchMenu();
+            DrawResearchMenu();
             break;
         case GAMEPLAY:
             UpdateGameplay(deltaTime);

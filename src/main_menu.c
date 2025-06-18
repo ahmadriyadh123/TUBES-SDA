@@ -106,6 +106,8 @@ void DrawMainMenu() {
     DrawTexturePro(settingsButtonTex, (Rectangle){0,0,originalButtonWidth,originalButtonHeight}, settingsButtonRect, (Vector2){0,0}, 0, WHITE);
     Rectangle exitButtonRect = { screenWidth / 2.0f - scaledButtonWidth / 2.0f, buttonsGroupStartY + (scaledButtonHeight + actualButtonSpacing) * 3, scaledButtonWidth, scaledButtonHeight };
     DrawTexturePro(exitButtonTex, (Rectangle){0,0,originalButtonWidth,originalButtonHeight}, exitButtonRect, (Vector2){0,0}, 0, WHITE);
+    Rectangle researchBtnRect = { 20, 20, (float)researchTreeButtonTex.width, (float)researchTreeButtonTex.height };
+    DrawTexture(researchTreeButtonTex, (int)researchBtnRect.x, (int)researchBtnRect.y, WHITE);
 }
 
 /* I.S. : Game berada dalam state MAIN_MENU, menunggu input dari pemain.
@@ -139,6 +141,11 @@ void HandleMainMenuInput() {
     } else if (CheckCollisionPointRec(mousePos, exitButtonRect)) {
         TraceLog(LOG_INFO, "Exit Clicked! Changing state to EXITING.");
         currentGameState = EXITING;
+    }
+    Rectangle researchBtnRect = { 20, 20, (float)researchTreeButtonTex.width, (float)researchTreeButtonTex.height };
+    if (CheckCollisionPointRec(mousePos, researchBtnRect)) {
+        previousGameState = currentGameState; // Simpan state saat ini
+        currentGameState = RESEARCH_MENU;
     }
     }
 }
