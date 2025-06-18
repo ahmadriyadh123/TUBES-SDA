@@ -83,6 +83,7 @@
         "src/utils.c",
         "src/audio.c",
         "src/gameplay.c",
+        "src/research_menu.c",
             "-o",
         "${workspaceFolder}/game.exe",
         "-I", "${workspaceFolder}/headers",

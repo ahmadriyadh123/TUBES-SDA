@@ -45,6 +45,9 @@ extern Texture2D levelEditorButtonTex;
 extern Texture2D settingsButtonTex;
 extern Texture2D exitButtonTex;
 extern Texture2D backButtonTex; 
+extern Texture2D researchTreeButtonTex;
+extern Texture2D minusButtonTex;
+extern Texture2D plusButtonTex;
 
 /* ADT untuk menyimpan informasi satu entri peta kustom. */
 /* Digunakan untuk menampilkan daftar peta di menu dan memuat file yang benar. */

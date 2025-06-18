@@ -23,6 +23,9 @@ Texture2D levelEditorButtonTex;
 Texture2D settingsButtonTex;
 Texture2D exitButtonTex;
 Texture2D backButtonTex; 
+Texture2D researchTreeButtonTex;
+Texture2D minusButtonTex;
+Texture2D plusButtonTex;
 
 CustomMapEntry customMaps[MAX_CUSTOM_MAPS];
 int customMapCount = 0;
@@ -50,6 +53,9 @@ void LoadMainMenuResources() {
     if (exitButtonTex.id == 0) TraceLog(LOG_WARNING, "Failed to load assets/img/mainmenu_imgs/exit_button.png");
     backButtonTex = LoadTexture("assets/img/level_editor_imgs/back_button.png");
     if (backButtonTex.id == 0) TraceLog(LOG_WARNING, "Failed to load assets/img/leveleditor_imgs/back_button.png");
+    researchTreeButtonTex = LoadTextureSafe("assets/img/mainmenu_imgs/pohonriset.png"); 
+    minusButtonTex = LoadTextureSafe("assets/img/level_editor_imgs/minus_button.png");
+    plusButtonTex = LoadTextureSafe("assets/img/level_editor_imgs/plus_button.png");
 }
 
 /* I.S. : Aset-aset gambar menu utama sedang berada di dalam memori.
@@ -63,6 +69,9 @@ void UnloadMainMenuResources() {
     if (settingsButtonTex.id != 0) UnloadTexture(settingsButtonTex);
     if (exitButtonTex.id != 0) UnloadTexture(exitButtonTex);
     if (backButtonTex.id != 0) UnloadTexture(backButtonTex);
+    UnloadTexture(researchTreeButtonTex);
+    UnloadTexture(minusButtonTex);
+    UnloadTexture(plusButtonTex);
     TraceLog(LOG_INFO, "Main Menu resources unloaded.");
 }
 

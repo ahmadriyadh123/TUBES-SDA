@@ -30,6 +30,10 @@ extern Vector2 pendingUpgradeIconPos;
           membentuk sebuah pohon upgrade yang lengkap untuk 'type' tower yang ditentukan. */
 void InitUpgradeTree(TowerUpgradeTree *tree, TowerType type);
 
+// Fungsi ini menambahkan 'child' sebagai anak dari 'parent' dalam struktur pohon.
+// Ini mengatur pointer parent dari anak dan menambahkannya ke daftar anak-anak parent.
+void AddChild(UpgradeNode* parent, UpgradeNode* child);
+
 /* I.S : Parameter-parameter seperti type, name, desc, cost, parent, dan exclusiveGroupId telah siap untuk digunakan dalam pembuatan node baru.
    F.S.: 'UpgradeNode' baru telah dialokasikan di memori dan semua propertinya telah diisi sesuai dengan parameter yang diberikan.
          Fungsi mengembalikan pointer ke node baru tersebut. Jika alokasi memori gagal, fungsi akan mengembalikan NULL.*/
